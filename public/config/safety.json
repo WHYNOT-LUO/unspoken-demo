@@ -1,0 +1,17 @@
+{
+  "_review": "DRAFT. The message, disclaimer and keyword list must be reviewed by a qualified person before any real users see them. A hotline is shown only when verified is true and number is filled in. Verify every number against an official source first.",
+  "disclaimer": "未言是一个情绪教育学习工具，帮助你理解情绪和关系。它不是心理咨询或治疗，也不能代替专业人士的帮助。AI 的回答只依据课程和你上传的资料，可能有不准确的地方。",
+  "message": "你刚才写下的话，让我们很在意你的安全。你不需要一个人扛着。\n\n如果你有伤害自己的想法，或者正在受到伤害，请马上告诉一个你信任的大人，比如家人、老师或学校的心理老师，或者拨打下面的电话。\n\n如果现在有紧急危险，请立即拨打 110 或 120。",
+  "hotlines": [
+    { "name": "报警电话", "number": "110", "verified": true },
+    { "name": "急救电话", "number": "120", "verified": true },
+    { "name": "心理援助热线", "number": "", "verified": false, "note": "待人工从官方渠道核实后填写号码，并把 verified 改为 true" },
+    { "name": "青少年求助热线", "number": "", "verified": false, "note": "待人工从官方渠道核实后填写号码，并把 verified 改为 true" }
+  ],
+  "keywords": [
+    "自杀", "想死", "不想活", "活不下去", "活着没意思", "轻生", "寻死", "去死",
+    "自残", "自伤", "割腕", "割手", "跳楼", "跳河", "安眠药", "结束生命", "结束自己",
+    "了结自己", "伤害自己", "消失算了",
+    "家暴", "虐待", "被打", "打我了", "性侵", "猥亵", "强奸", "被摸"
+  ]
+}
