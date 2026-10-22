@@ -18,7 +18,7 @@ if ! lsof -ti tcp:3100 -sTCP:LISTEN >/dev/null; then
 fi
 
 LOG=$(mktemp)
-./bin/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3100 >"$LOG" 2>&1 &
+./bin/cloudflared tunnel --no-autoupdate --protocol http2 --url http://127.0.0.1:3100 >"$LOG" 2>&1 &
 TUNNEL_PID=$!
 trap 'kill $TUNNEL_PID $SERVER_PID 2>/dev/null; rm -f "$LOG"' EXIT
 
