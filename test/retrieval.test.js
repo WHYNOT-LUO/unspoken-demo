@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { tokenize, chunkText, buildIndex, search, isFollowUp } from "../public/js/retrieval.js";
+import { tokenize, contentTokens, chunkText, buildIndex, search, isFollowUp } from "../public/js/retrieval.js";
 
 test("tokenize splits Chinese into bigrams and Latin into lowercase words", () => {
   assert.deepEqual(tokenize("情绪教育"), ["情绪", "绪教", "教育"]);
@@ -61,4 +61,33 @@ test("search limits results to topK", () => {
     id: `d${i}`, title: `t${i}`, text: `情绪表达练习第${i}课`,
   }));
   assert.equal(search(buildIndex(many), "情绪表达", { topK: 3 }).length, 3);
+});
+
+test("English tokens drop filler words and reduce simple word endings", () => {
+  assert.deepEqual(contentTokens("What are the parents asking?"), ["parent", "ask"]);
+  assert.deepEqual(contentTokens("feelings worries"), ["feel", "worry"]);
+});
+
+test("English search finds the matching lesson", () => {
+  const index = buildIndex([
+    { id: "money", title: "Money and guilt", text: "Every time a child spends money, parents ask where it went. The child feels guilty." },
+    { id: "dating", title: "Dating early", text: "Why many adults advise against dating too early, and how to protect yourself." },
+  ]);
+  assert.equal(search(index, "Why do I feel guilty when my parents ask about money?")[0].docId, "money");
+  assert.deepEqual(search(index, "What is the weather like today?"), []);
+});
+
+test("isFollowUp recognises short English follow-ups", () => {
+  assert.equal(isFollowUp("And what about parents?"), true);
+  assert.equal(isFollowUp("Why?"), true);
+  assert.equal(isFollowUp("How do I explain my feelings to my mother without starting an argument?"), false);
+});
+
+test("English documents are split into longer passages than Chinese ones", () => {
+  const en = "Healthy relationships feel safe and respectful. ".repeat(30); // ~1400 chars
+  const zh = "健康的关系让人感到安全和被尊重。".repeat(60); // ~960 chars
+  const index = buildIndex([{ id: "en", title: "en", text: en }, { id: "zh", title: "zh", text: zh }]);
+  const longest = (id) => Math.max(...index.chunks.filter((c) => c.docId === id).map((c) => c.text.length));
+  assert.ok(longest("en") > 400 && longest("en") <= 900);
+  assert.ok(longest("zh") <= 400);
 });

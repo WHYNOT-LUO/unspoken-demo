@@ -13,11 +13,13 @@ before(async () => {
   mkdirSync(join(dir, "courses"));
   mkdirSync(join(dir, "library"));
   writeFileSync(join(dir, "courses", "c1.md"), "---\ntitle: 测试课\norder: 1\n---\n测试正文");
+  mkdirSync(join(dir, "courses", "en"));
+  writeFileSync(join(dir, "courses", "en", "c1.md"), "---\ntitle: Test lesson\norder: 1\n---\nTest body");
   server = createApp({
     contentDir: dir,
     mock: true,
     llm: {},
-    limits: { perVisitorPerDay: 6, sitePerDay: 100 },
+    limits: { perVisitorPerDay: 7, sitePerDay: 100 },
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -98,8 +100,25 @@ test("chat rejects an unknown role", async () => {
   assert.equal((await chat({ ...okBody, role: "admin" })).status, 400);
 });
 
+test("courses are served in English when asked", async () => {
+  const en = await (await fetch(`${base}/api/courses?lang=en`)).json();
+  assert.equal(en[0].title, "Test lesson");
+});
+
+test("chat rejects an unknown language", async () => {
+  assert.equal((await chat({ ...okBody, lang: "fr" })).status, 400);
+});
+
+test("English crisis language is caught by the server", async () => {
+  assert.deepEqual(await (await chat({ ...okBody, question: "I want to kill myself" })).json(), { type: "crisis" });
+});
+
+test("test-mode reply follows the requested language", async () => {
+  assert.match(await (await chat({ ...okBody, lang: "en" })).text(), /Test mode/);
+});
+
 test("daily visitor limit returns 429", async () => {
   let last;
-  for (let i = 0; i < 8; i++) last = await chat(okBody);
+  for (let i = 0; i < 10; i++) last = await chat(okBody);
   assert.equal(last.status, 429);
 });

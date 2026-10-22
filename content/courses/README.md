@@ -18,3 +18,5 @@ order: 1
 - `order`：课程顺序，数字小的排在前面。
 
 保存后刷新网页即可看到，不需要重启。这个 README 文件不会显示为课程。
+
+英文版放在 `en/` 子文件夹，文件名和中文版相同（例如 `en/lesson-01.md`），这样切换语言时学习进度不会丢。English versions go in the `en/` folder with the same file names.

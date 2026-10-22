@@ -6,8 +6,8 @@ import { readFileSync } from "node:fs";
 import { join, extname, resolve, sep, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
-import { loadDocs } from "./lib/content.js";
-import { buildMessages, buildAssistMessages, ASSIST_TASKS, ROLES } from "./lib/prompt.js";
+import { loadLocalized } from "./lib/content.js";
+import { buildMessages, buildAssistMessages, ASSIST_TASKS, ROLES, LANGS } from "./lib/prompt.js";
 import { createLimiter } from "./lib/ratelimit.js";
 import { detectCrisis } from "./public/js/safety.js";
 
@@ -57,9 +57,14 @@ function validRole(role) {
   return role === undefined || role === "" || Object.hasOwn(ROLES, role);
 }
 
+function validLang(lang) {
+  return lang === undefined || LANGS.includes(lang);
+}
+
 function validateChat(body) {
-  const { question, history = [], sources, role } = body || {};
+  const { question, history = [], sources, role, lang } = body || {};
   if (!validRole(role)) return "身份不正确。";
+  if (!validLang(lang)) return "语言不正确。";
   if (typeof question !== "string" || !question.trim() || question.length > MAX_QUESTION) {
     return "问题不能为空，且不超过 1000 字。";
   }
@@ -76,7 +81,8 @@ function validateChat(body) {
 }
 
 function validateAssist(body) {
-  const { task, text, role } = body || {};
+  const { task, text, role, lang } = body || {};
+  if (!validLang(lang)) return "语言不正确。";
   if (!Object.hasOwn(ASSIST_TASKS, task)) return "不支持的操作。";
   if (typeof text !== "string" || !text.trim() || text.length > MAX_ASSIST_CHARS) {
     return "文字不能为空，且不超过 3000 字。";
@@ -95,20 +101,33 @@ function sse(res) {
 
 const delta = (text) => `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`;
 
-const MOCK_NOTE = "【测试模式：未连接 AI 模型，以下不是真实回答】\n\n";
-
-function mockChatLines({ sources }) {
+function mockChatLines({ sources, lang }) {
+  if (lang === "en") {
+    return [
+      "[Test mode: no AI model connected. This is not a real answer.]\n\n",
+      `Found ${sources.length} passage(s) for this question:\n\n`,
+      ...sources.map((s, i) => `- [${i + 1}] “${s.title}”\n`),
+      "\nOnce a model is connected, the AI answers only from these passages and cites them by number.",
+    ];
+  }
   return [
-    MOCK_NOTE,
+    "【测试模式：未连接 AI 模型，以下不是真实回答】\n\n",
     `系统为这个问题找到了 ${sources.length} 段资料：\n\n`,
     ...sources.map((s, i) => `- [${i + 1}] 《${s.title}》\n`),
     "\n连接模型后，AI 会只根据这些资料作答，并标注来源编号。",
   ];
 }
 
-function mockAssistLines({ task, text }) {
+function mockAssistLines({ task, text, lang }) {
+  if (lang === "en") {
+    return [
+      "[Test mode: no AI model connected. This is not a real result.]\n\n",
+      `Received ${text.length} characters for the task “${task}”.\n\n`,
+      "Once a model is connected, the AI's rewritten text appears here.",
+    ];
+  }
   return [
-    MOCK_NOTE,
+    "【测试模式：未连接 AI 模型，以下不是真实回答】\n\n",
     `收到 ${text.length} 字，任务是“${ASSIST_TASKS[task].label}”。\n\n`,
     "连接模型后，这里会显示 AI 处理后的文字。",
   ];
@@ -222,15 +241,16 @@ export function createApp(config) {
 
   return http.createServer(async (req, res) => {
     try {
-      const { pathname } = new URL(req.url, "http://localhost");
+      const { pathname, searchParams } = new URL(req.url, "http://localhost");
       if (req.method === "GET" && pathname === "/api/status") {
         return sendJson(res, 200, { mock: config.mock, model: config.mock ? null : config.llm.model });
       }
+      const lang = searchParams.get("lang") === "en" ? "en" : "zh";
       if (req.method === "GET" && pathname === "/api/courses") {
-        return sendJson(res, 200, loadDocs(join(contentDir, "courses")));
+        return sendJson(res, 200, loadLocalized(join(contentDir, "courses"), lang));
       }
       if (req.method === "GET" && pathname === "/api/library") {
-        return sendJson(res, 200, loadDocs(join(contentDir, "library")));
+        return sendJson(res, 200, loadLocalized(join(contentDir, "library"), lang));
       }
       if (req.method === "POST" && pathname === "/api/chat") return await handleChat(req, res);
       if (req.method === "POST" && pathname === "/api/assist") return await handleAssist(req, res);

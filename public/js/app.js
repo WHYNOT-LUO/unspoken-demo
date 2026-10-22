@@ -5,6 +5,7 @@ import { detectCrisis, visibleHotlines } from "/js/safety.js";
 import * as store from "/js/store.js";
 import { fileToText, ACCEPT } from "/js/parse.js";
 import { TEMPLATES } from "/js/templates.js";
+import { t, setLang, getLang, detectLang } from "/js/i18n.js";
 
 // ---------- helpers ----------
 
@@ -23,12 +24,14 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
 const md = (text) => DOMPurify.sanitize(marked.parse(String(text), { breaks: true, gfm: true }));
 
 const fmtDate = (ms) =>
-  new Date(ms).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  new Date(ms).toLocaleString(getLang() === "en" ? "en-GB" : "zh-CN", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-const KIND_LABEL = { course: "课程", library: "参考资料", upload: "我的资料" };
-
-const NO_HIT =
-  "资料里没有找到和这个问题相关的内容。可以换个说法再问，或者到「我的资料」上传相关资料后，把“回答依据”切换过去。";
+const quote = (title) => t("quote", { t: title });
 
 let toastTimer;
 function toast(text, kind = "") {
@@ -41,10 +44,10 @@ function toast(text, kind = "") {
 }
 
 function debounce(fn, ms) {
-  let t;
+  let timer;
   return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
   };
 }
 
@@ -65,7 +68,7 @@ function storageSet(key, value) {
 
 const state = {
   status: { mock: true },
-  safety: { keywords: [], hotlines: [], message: "", disclaimer: "" },
+  safety: { keywords: [], hotlines: [], zh: {}, en: {} },
   courses: [],
   library: [],
   uploads: [],
@@ -85,12 +88,56 @@ const state = {
   noteQuery: "",
 };
 
+const safetyText = (field) => state.safety[getLang()]?.[field] || state.safety.zh?.[field] || "";
+const hotlineName = (h) => (typeof h.name === "string" ? h.name : h.name[getLang()] || h.name.zh);
+
 function rebuildIndex() {
   state.index = buildIndex([
     ...state.courses.map((d) => ({ id: `course:${d.id}`, title: d.title, text: d.text, kind: "course" })),
     ...state.library.map((d) => ({ id: `library:${d.id}`, title: d.title, text: d.text, kind: "library" })),
     ...state.uploads.map((d) => ({ id: `upload:${d.id}`, title: d.title, text: d.text, kind: "upload" })),
   ]);
+}
+
+// ---------- language ----------
+
+/** Translate the fixed parts of the page (elements tagged with data-i18n*). */
+function applyStaticText() {
+  for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
+  for (const el of document.querySelectorAll("[data-i18n-placeholder]")) el.placeholder = t(el.dataset.i18nPlaceholder);
+  for (const el of document.querySelectorAll("[data-i18n-aria]")) el.setAttribute("aria-label", t(el.dataset.i18nAria));
+  document.documentElement.lang = getLang() === "en" ? "en" : "zh-CN";
+  document.title = t("doc.title");
+}
+
+/** Courses and platform references in the current language (English falls back to Chinese). */
+async function loadContent() {
+  const lang = getLang();
+  const [courses, library] = await Promise.all([getJson(`/api/courses?lang=${lang}`), getJson(`/api/library?lang=${lang}`)]);
+  Object.assign(state, { courses, library });
+  rebuildIndex();
+}
+
+function renderAll() {
+  applyStaticText();
+  renderCourses();
+  renderLibrary();
+  renderNotes();
+  renderScope();
+  renderMessages();
+  updateComposer();
+}
+
+async function switchLang() {
+  setLang(getLang() === "zh" ? "en" : "zh");
+  storageSet("unspoken.lang", getLang());
+  try {
+    await loadContent();
+  } catch {
+    toast(t("err.server"), "error");
+  }
+  renderAll();
+  if ($("#dialog").open && $("#dialog").dataset.kind === "welcome") renderWelcome();
 }
 
 // ---------- navigation ----------
@@ -105,11 +152,10 @@ function setView(view) {
 
 // ---------- role & progress (kept in this browser) ----------
 
-const ROLE_LABEL = { parent: "家长", student: "学生" };
-const AUDIENCE_LABEL = { parent: "适合家长", student: "适合学生", all: "家长和学生" };
+const ROLES = ["parent", "student"];
 
 function setRole(role) {
-  state.role = ROLE_LABEL[role] ? role : "";
+  state.role = ROLES.includes(role) ? role : "";
   storageSet("unspoken.role", state.role);
   renderCourses();
 }
@@ -129,6 +175,7 @@ function toggleDone(id) {
 }
 
 const forRole = (c) => !state.role || c.audience === "all" || c.audience === state.role;
+const audienceLabel = (a) => t(`audience.${["parent", "student"].includes(a) ? a : "all"}`);
 
 // ---------- courses ----------
 
@@ -137,14 +184,14 @@ function courseCard(c) {
   return `
     <button class="course-card" data-course="${esc(c.id)}">
       <span class="card-top">
-        <span class="num">第 ${state.courses.indexOf(c) + 1} 课</span>
-        ${done ? '<span class="done-tag">✓ 已学完</span>' : ""}
+        <span class="num">${t("courses.lesson", { n: state.courses.indexOf(c) + 1 })}</span>
+        ${done ? `<span class="done-tag">${t("courses.doneTag")}</span>` : ""}
       </span>
       <h2>${esc(c.title)}</h2>
       ${c.summary ? `<p>${esc(c.summary)}</p>` : ""}
       <span class="tags">
-        <span class="tag">${AUDIENCE_LABEL[c.audience] || AUDIENCE_LABEL.all}</span>
-        ${c.draft ? '<span class="tag draft">草稿 · 待审核</span>' : ""}
+        <span class="tag">${audienceLabel(c.audience)}</span>
+        ${c.draft ? `<span class="tag draft">${t("courses.draftTag")}</span>` : ""}
       </span>
     </button>`;
 }
@@ -163,20 +210,20 @@ function renderCourses() {
       .map((q) => `<button class="chip" data-ask="${esc(q)}">${esc(q)}</button>`)
       .join("");
     el.innerHTML = `
-      <button class="back" data-act="all">‹ 全部课程</button>
+      <button class="back" data-act="all">${t("courses.back")}</button>
       <article class="reader" id="reader" data-title="${esc(course.title)}">
-        ${course.draft ? '<p class="draft-note">这是一节草稿课程：内容由 AI 根据项目资料起草，正式使用前需要专业人士审核。</p>' : ""}
-        <span class="tag">${AUDIENCE_LABEL[course.audience] || AUDIENCE_LABEL.all}</span>
+        ${course.draft ? `<p class="draft-note">${t("courses.draftNote")}</p>` : ""}
+        <span class="tag">${audienceLabel(course.audience)}</span>
         <h1>${esc(course.title)}</h1>
         ${course.summary ? `<p class="lede">${esc(course.summary)}</p>` : ""}
         <div class="prose">${md(body)}</div>
-        ${chips ? `<div class="ask-box"><h3>读完以后，可以问问未言</h3><div class="chips">${chips}</div></div>` : ""}
+        ${chips ? `<div class="ask-box"><h3>${t("courses.askTitle")}</h3><div class="chips">${chips}</div></div>` : ""}
         <div class="reader-foot">
-          <button class="${done ? "ghost" : "primary"}" data-act="done">${done ? "✓ 已学完" : "标记为已学完"}</button>
-          ${next ? `<button class="ghost" data-course="${esc(next.id)}">下一课：${esc(next.title)} ›</button>` : ""}
+          <button class="${done ? "ghost" : "primary"}" data-act="done">${done ? t("courses.doneTag") : t("courses.markDone")}</button>
+          ${next ? `<button class="ghost" data-course="${esc(next.id)}">${t("courses.next", { title: esc(next.title) })}</button>` : ""}
         </div>
       </article>
-      <p class="reader-tip">提示：选中一段文字，可以把它记到笔记本，或者直接问问未言。</p>`;
+      <p class="reader-tip">${t("courses.tip")}</p>`;
     if (shownCourseId !== course.id) el.parentElement.scrollTop = 0;
     shownCourseId = course.id;
     return;
@@ -185,10 +232,10 @@ function renderCourses() {
 
   if (!state.courses.length) {
     el.innerHTML = `
-      <div class="view-head"><h1>课程</h1></div>
+      <div class="view-head"><h1>${t("courses.title")}</h1></div>
       <div class="empty">
-        <h2>课程内容正在准备中</h2>
-        <p>课程文件放进 <code>content/courses/</code> 文件夹（.md 或 .txt）后，刷新页面就会出现在这里。</p>
+        <h2>${t("courses.emptyTitle")}</h2>
+        <p>${t("courses.emptyBody")}</p>
       </div>`;
     return;
   }
@@ -196,17 +243,17 @@ function renderCourses() {
   const doneCount = state.courses.filter((c) => state.done.has(c.id)).length;
   const mine = state.courses.filter(forRole);
   const others = state.courses.filter((c) => !forRole(c));
-  const roleButtons = [["parent", "家长"], ["student", "学生"], ["", "都看看"]]
-    .map(([r, label]) => `<button class="${state.role === r ? "on" : ""}" data-role="${r}">${label}</button>`)
+  const roleButtons = [["parent", "role.parent"], ["student", "role.student"], ["", "role.all"]]
+    .map(([r, key]) => `<button class="${state.role === r ? "on" : ""}" data-role="${r}">${t(key)}</button>`)
     .join("");
 
   el.innerHTML = `
-    <div class="view-head"><h1>课程</h1><span class="progress">已学完 ${doneCount} / ${state.courses.length}</span></div>
-    <p class="hint">先读一读课程。读到不明白的地方，可以随时在“问问未言”里提问。</p>
-    <div class="role-switch" role="group" aria-label="我的身份"><span>我是</span><span class="tabs">${roleButtons}</span></div>
-    ${state.role ? `<h2 class="section-title">推荐给${ROLE_LABEL[state.role]}</h2>` : ""}
+    <div class="view-head"><h1>${t("courses.title")}</h1><span class="progress">${t("courses.progress", { done: doneCount, total: state.courses.length })}</span></div>
+    <p class="hint">${t("courses.hint")}</p>
+    <div class="role-switch" role="group" aria-label="${t("courses.roleAria")}"><span>${t("courses.iam")}</span><span class="tabs">${roleButtons}</span></div>
+    ${state.role ? `<h2 class="section-title">${t(`courses.rec.${state.role}`)}</h2>` : ""}
     <div class="course-grid">${mine.map(courseCard).join("")}</div>
-    ${others.length ? `<h2 class="section-title">其他课程</h2><div class="course-grid">${others.map(courseCard).join("")}</div>` : ""}`;
+    ${others.length ? `<h2 class="section-title">${t("courses.others")}</h2><div class="course-grid">${others.map(courseCard).join("")}</div>` : ""}`;
 }
 
 function askAbout(question) {
@@ -274,53 +321,67 @@ $("#selToolbar").addEventListener("click", (e) => {
   getSelection().removeAllRanges();
   hideSelToolbar();
   if (act === "note") {
-    openSaveDialog({ title, body: `> ${text.replace(/\n/g, "\n> ")}`, source: `课程《${title}》` });
+    openSaveDialog({ title, body: `> ${text.replace(/\n/g, "\n> ")}`, source: t("sel.source", { title }) });
   } else {
     state.scope = "courses";
     renderScope();
     if (isPhone()) setView("chat");
     const q = $("#question");
-    q.value = `关于课程《${title}》里的这段话：“${text}”\n`;
+    q.value = t("sel.askPrefix", { title, text });
     q.focus();
     q.setSelectionRange(q.value.length, q.value.length);
     autosize(q);
   }
 });
 
+// ---------- dialogs ----------
+
+function openDialog(kind, html) {
+  const dlg = $("#dialog");
+  dlg.dataset.kind = kind;
+  dlg.innerHTML = html;
+  dlg.onclose = null;
+  dlg.returnValue = "";
+  if (!dlg.open) dlg.showModal();
+  return dlg;
+}
+
 // ---------- save-to-notebook dialog ----------
 
 function openSaveDialog({ title, body, source }) {
-  const dlg = $("#dialog");
-  const options = state.notes.map((n) => `<option value="${esc(n.id)}">${esc(n.title || "未命名笔记")}</option>`).join("");
-  dlg.innerHTML = `
-    <form method="dialog" class="dlg">
-      <h2>记到笔记本</h2>
-      <label>保存到
+  const options = state.notes
+    .map((n) => `<option value="${esc(n.id)}">${esc(n.title || t("common.untitled"))}</option>`)
+    .join("");
+  const dlg = openDialog(
+    "save",
+    `<form method="dialog" class="dlg">
+      <h2>${t("save.title")}</h2>
+      <label>${t("save.to")}
         <select name="saveTo">
-          <option value="new">新建一条笔记</option>
+          <option value="new">${t("save.new")}</option>
           ${options}
         </select>
       </label>
-      <label class="new-title">笔记标题
+      <label class="new-title">${t("save.noteTitle")}
         <input name="newTitle" maxlength="80" value="${esc(title.slice(0, 40))}">
       </label>
       <div class="preview prose">${md(body)}</div>
-      <p class="meta">来源：${esc(source)}</p>
+      <p class="meta">${esc(t("save.source", { s: source }))}</p>
       <menu>
-        <button value="cancel" class="ghost">取消</button>
-        <button value="ok" class="primary">保存</button>
+        <button value="cancel" class="ghost">${t("common.cancel")}</button>
+        <button value="ok" class="primary">${t("common.save")}</button>
       </menu>
-    </form>`;
-  const form = $("form", dlg);
-  const { saveTo, newTitle } = form.elements;
+    </form>`
+  );
+  const { saveTo, newTitle } = $("form", dlg).elements;
   saveTo.addEventListener("change", () => ($(".new-title", dlg).hidden = saveTo.value !== "new"));
   dlg.onclose = async () => {
     if (dlg.returnValue !== "ok") return;
-    const entry = `${body}\n\n*来源：${source} · ${fmtDate(Date.now())}*`;
+    const entry = `${body}\n\n${t("save.entrySource", { s: source, date: fmtDate(Date.now()) })}`;
     const now = Date.now();
     let note;
     if (saveTo.value === "new") {
-      note = { id: uid(), title: newTitle.value.trim() || "未命名笔记", body: entry, createdAt: now, updatedAt: now };
+      note = { id: uid(), title: newTitle.value.trim() || t("common.untitled"), body: entry, createdAt: now, updatedAt: now };
       state.notes.unshift(note);
     } else {
       note = state.notes.find((n) => n.id === saveTo.value);
@@ -330,10 +391,8 @@ function openSaveDialog({ title, body, source }) {
     }
     await store.put("notes", note);
     renderNotes();
-    toast(`已记到笔记《${note.title}》`);
+    toast(t("save.done", { t: note.title }));
   };
-  dlg.returnValue = "";
-  dlg.showModal();
 }
 
 // ---------- library (uploads) ----------
@@ -344,10 +403,10 @@ function docItem(doc, { removable }) {
     <li class="doc" data-doc="${esc(doc.key)}">
       <div class="doc-row">
         <span class="doc-title">${esc(doc.title)}</span>
-        <span class="doc-meta">${doc.text.length.toLocaleString()} 字${doc.addedAt ? ` · ${fmtDate(doc.addedAt)}` : ""}</span>
+        <span class="doc-meta">${t("lib.chars", { n: doc.text.length.toLocaleString() })}${doc.addedAt ? ` · ${fmtDate(doc.addedAt)}` : ""}</span>
         <span class="doc-actions">
-          <button class="ghost small" data-act="toggle">${open ? "收起" : "查看"}</button>
-          ${removable ? `<button class="primary small" data-act="ask">用它提问</button><button class="danger-btn small" data-act="delete">删除</button>` : ""}
+          <button class="ghost small" data-act="toggle">${open ? t("lib.hide") : t("lib.view")}</button>
+          ${removable ? `<button class="primary small" data-act="ask">${t("lib.ask")}</button><button class="danger-btn small" data-act="delete">${t("common.delete")}</button>` : ""}
         </span>
       </div>
       ${open ? `<div class="doc-preview">${esc(doc.text.slice(0, 4000))}${doc.text.length > 4000 ? "\n……" : ""}</div>` : ""}
@@ -357,24 +416,19 @@ function docItem(doc, { removable }) {
 function renderLibrary() {
   const el = $("#view-library");
   const uploads = state.uploads.map((d) => docItem({ ...d, key: `upload:${d.id}` }, { removable: true })).join("");
-  const loading = state.loadingFiles.map((n) => `<li class="doc loading">正在读取「${esc(n)}」…</li>`).join("");
+  const loading = state.loadingFiles.map((n) => `<li class="doc loading">${esc(t("lib.loading", { n }))}</li>`).join("");
   const platform = state.library.map((d) => docItem({ ...d, key: `library:${d.id}` }, { removable: false })).join("");
 
   el.innerHTML = `
-    <div class="view-head"><h1>我的资料</h1></div>
-    <p class="hint">上传你找到的文章或资料，然后在“问问未言”里把“回答依据”切换到它，未言就只根据这些资料回答。<br>
-      资料只保存在你这台设备的浏览器里；提问时，和问题相关的几段内容会发送给 AI 模型来生成回答。</p>
+    <div class="view-head"><h1>${t("lib.title")}</h1></div>
+    <p class="hint">${t("lib.hint")}</p>
     <label class="dropzone" id="dropzone">
-      <strong>上传资料</strong>
-      点击选择，或把文件拖到这里 · 支持 PDF、Word（.docx）、TXT、Markdown，单个不超过 15MB
+      <strong>${t("lib.upload")}</strong>
+      ${t("lib.drop")}
       <input type="file" id="fileInput" accept="${ACCEPT}" multiple>
     </label>
-    ${
-      uploads || loading
-        ? `<ul class="doc-list">${loading}${uploads}</ul>`
-        : `<div class="empty"><p>还没有上传资料。</p></div>`
-    }
-    ${platform ? `<h2 class="section-title">平台参考资料（由未言提供）</h2><ul class="doc-list">${platform}</ul>` : ""}`;
+    ${uploads || loading ? `<ul class="doc-list">${loading}${uploads}</ul>` : `<div class="empty"><p>${t("lib.empty")}</p></div>`}
+    ${platform ? `<h2 class="section-title">${t("lib.platform")}</h2><ul class="doc-list">${platform}</ul>` : ""}`;
 }
 
 async function addFiles(files) {
@@ -394,9 +448,10 @@ async function addFiles(files) {
       };
       await store.put("docs", doc);
       state.uploads.unshift(doc);
-      toast(`已添加「${doc.title}」`);
+      toast(t("lib.added", { t: doc.title }));
     } catch (err) {
-      toast(`「${file.name}」无法读取：${err.message}`, "error");
+      const reason = t(`err.file.${err.code || "other"}`);
+      toast(t("lib.readFail", { n: file.name, e: reason.startsWith("err.") ? t("err.file.other") : reason }), "error");
     } finally {
       state.loadingFiles.splice(state.loadingFiles.indexOf(file.name), 1);
       rebuildIndex();
@@ -439,7 +494,7 @@ libraryEl.addEventListener("click", async (e) => {
     if (!isPhone()) $("#question").focus();
   } else if (act === "delete") {
     const doc = state.uploads.find((d) => d.id === id);
-    if (!confirm(`删除资料「${doc.title}」？删除后无法恢复。`)) return;
+    if (!confirm(t("lib.confirmDelete", { t: doc.title }))) return;
     await store.remove("docs", id);
     state.uploads = state.uploads.filter((d) => d.id !== id);
     if (state.scope === key) state.scope = state.uploads.length ? "uploads" : "courses";
@@ -459,22 +514,18 @@ function filteredNotes() {
 
 function noteListHtml() {
   const notes = filteredNotes();
-  if (!notes.length && state.noteQuery) return '<li class="hint">没有找到相关笔记。</li>';
+  if (!notes.length && state.noteQuery) return `<li class="hint">${t("notes.noMatch")}</li>`;
   return notes
     .map(
       (n) => `
       <li><button class="note-item ${n.id === state.noteId ? "active" : ""}" data-note="${esc(n.id)}">
-        <b>${esc(n.title || "未命名笔记")}</b><small>${fmtDate(n.updatedAt)}</small>
+        <b>${esc(n.title || t("common.untitled"))}</b><small>${fmtDate(n.updatedAt)}</small>
       </button></li>`
     )
     .join("");
 }
 
-const ASSIST_MENU = [
-  ["points", "整理成要点"],
-  ["gentle", "换一种温和的说法"],
-  ["feelings", "帮我把感受说清楚"],
-];
+const ASSIST_TASKS = ["points", "gentle", "feelings"];
 
 function renderNotes() {
   const el = $("#view-notes");
@@ -482,41 +533,41 @@ function renderNotes() {
 
   const editor = note
     ? `
-      <button class="back" data-act="list">‹ 全部笔记</button>
-      <input class="note-title" id="noteTitle" maxlength="80" value="${esc(note.title)}" placeholder="笔记标题" aria-label="笔记标题">
+      <button class="back" data-act="list">${t("notes.back")}</button>
+      <input class="note-title" id="noteTitle" maxlength="80" value="${esc(note.title)}" placeholder="${t("notes.titlePh")}" aria-label="${t("notes.titlePh")}">
       <div class="note-tools">
         <span class="tabs">
-          <button data-act="edit" class="${state.notePreview ? "" : "on"}">编辑</button>
-          <button data-act="preview" class="${state.notePreview ? "on" : ""}">预览</button>
+          <button data-act="edit" class="${state.notePreview ? "" : "on"}">${t("notes.edit")}</button>
+          <button data-act="preview" class="${state.notePreview ? "on" : ""}">${t("notes.preview")}</button>
         </span>
         <details class="assist">
-          <summary class="ghost small">AI 帮写</summary>
+          <summary class="ghost small">${t("notes.assist")}</summary>
           <div class="assist-menu">
-            <p>先选中一段文字；不选就处理整条笔记。</p>
-            ${ASSIST_MENU.map(([task, label]) => `<button data-assist="${task}">${label}</button>`).join("")}
+            <p>${t("notes.assistHint")}</p>
+            ${ASSIST_TASKS.map((task) => `<button data-assist="${task}">${t(`assist.${task}`)}</button>`).join("")}
           </div>
         </details>
-        <span class="save-state" id="saveState">已保存</span>
-        <button class="ghost small" data-act="export">导出</button>
-        <button class="danger-btn small" data-act="delete">删除</button>
+        <span class="save-state" id="saveState">${t("notes.saved")}</span>
+        <button class="ghost small" data-act="export">${t("notes.export")}</button>
+        <button class="danger-btn small" data-act="delete">${t("common.delete")}</button>
       </div>
       ${
         state.notePreview
-          ? `<div class="note-preview prose">${note.body ? md(note.body) : '<p class="hint">这条笔记还是空的。</p>'}</div>`
-          : `<textarea class="note-body" id="noteBody" placeholder="写下你的理解、感受，或者想问的问题…（支持 Markdown）" aria-label="笔记内容">${esc(note.body)}</textarea>`
+          ? `<div class="note-preview prose">${note.body ? md(note.body) : `<p class="hint">${t("notes.emptyPreview")}</p>`}</div>`
+          : `<textarea class="note-body" id="noteBody" placeholder="${t("notes.bodyPh")}" aria-label="${t("notes.bodyAria")}">${esc(note.body)}</textarea>`
       }`
-    : `<p class="note-placeholder">${state.notes.length ? "选择一条笔记" : "还没有笔记。<br>可以新建一条，或者在课程和问答里点“记笔记”。"}</p>`;
+    : `<p class="note-placeholder">${state.notes.length ? t("notes.pick") : t("notes.none")}</p>`;
 
   el.innerHTML = `
     <div class="notes" data-mode="${note ? "edit" : "list"}">
       <div class="notes-list">
-        <div class="view-head"><h1>笔记本</h1><button class="primary small" data-act="new">新建笔记</button></div>
-        <p class="hint">笔记只保存在你这台设备的浏览器里，不会上传。清除浏览器数据会删除笔记，可以先导出备份。</p>
+        <div class="view-head"><h1>${t("notes.title")}</h1><button class="primary small" data-act="new">${t("notes.new")}</button></div>
+        <p class="hint">${t("notes.hint")}</p>
         ${
           state.notes.length
             ? `<div class="notes-search">
-                <input type="search" id="noteSearch" placeholder="搜索笔记" value="${esc(state.noteQuery)}" aria-label="搜索笔记">
-                <button class="ghost small" data-act="export-all">导出全部</button>
+                <input type="search" id="noteSearch" placeholder="${t("notes.search")}" value="${esc(state.noteQuery)}" aria-label="${t("notes.search")}">
+                <button class="ghost small" data-act="export-all">${t("notes.exportAll")}</button>
               </div>`
             : ""
         }
@@ -529,7 +580,7 @@ function renderNotes() {
 const saveNote = debounce(async (note) => {
   await store.put("notes", note);
   const s = $("#saveState");
-  if (s) s.textContent = "已保存";
+  if (s) s.textContent = t("notes.saved");
 }, 400);
 
 function touchNote() {
@@ -539,9 +590,9 @@ function touchNote() {
   if ($("#noteBody")) note.body = $("#noteBody").value;
   note.updatedAt = Date.now();
   const s = $("#saveState");
-  if (s) s.textContent = "正在保存…";
+  if (s) s.textContent = t("notes.saving");
   const item = $(`[data-note="${CSS.escape(note.id)}"] b`);
-  if (item) item.textContent = note.title || "未命名笔记";
+  if (item) item.textContent = note.title || t("common.untitled");
   saveNote(note);
 }
 
@@ -558,41 +609,47 @@ async function createNote({ title = "", body = "" } = {}) {
 }
 
 function openTemplateDialog() {
-  const templates = TEMPLATES.filter((t) => t.audience === "all" || !state.role || t.audience === state.role);
-  const dlg = $("#dialog");
-  dlg.innerHTML = `
-    <form method="dialog" class="dlg">
-      <h2>新建笔记</h2>
-      <p class="meta">可以从空白开始，也可以选一个引导模板。</p>
+  const lang = getLang();
+  const templates = TEMPLATES.filter((tpl) => tpl.audience === "all" || !state.role || tpl.audience === state.role);
+  const dlg = openDialog(
+    "template",
+    `<form method="dialog" class="dlg">
+      <h2>${t("tpl.title")}</h2>
+      <p class="meta">${t("tpl.hint")}</p>
       <div class="tpl-grid">
-        <button class="tpl" value="blank"><b>空白笔记</b><small>自由书写</small></button>
-        ${templates.map((t) => `<button class="tpl" value="${esc(t.id)}"><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></button>`).join("")}
+        <button class="tpl" value="blank"><b>${t("tpl.blank")}</b><small>${t("tpl.blankDesc")}</small></button>
+        ${templates.map((tpl) => `<button class="tpl" value="${esc(tpl.id)}"><b>${esc(tpl[lang].title)}</b><small>${esc(tpl[lang].desc)}</small></button>`).join("")}
       </div>
-      <menu><button value="cancel" class="ghost">取消</button></menu>
-    </form>`;
+      <menu><button value="cancel" class="ghost">${t("common.cancel")}</button></menu>
+    </form>`
+  );
   dlg.onclose = () => {
     const choice = dlg.returnValue;
     if (choice === "blank") createNote();
-    const tpl = TEMPLATES.find((t) => t.id === choice);
-    if (tpl) createNote({ title: tpl.title, body: tpl.body });
+    const tpl = TEMPLATES.find((x) => x.id === choice);
+    if (tpl) createNote({ title: tpl[lang].title, body: tpl[lang].body });
   };
-  dlg.returnValue = "";
-  dlg.showModal();
 }
 
 function downloadText(filename, text) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-  a.download = `${filename.replace(/[\\/:*?"<>|]/g, "_").slice(0, 60) || "笔记"}.md`;
+  a.download = `${filename.replace(/[\\/:*?"<>|]/g, "_").slice(0, 60) || t("notes.fileName")}.md`;
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const noteMarkdown = (n) => `# ${n.title || "未命名笔记"}\n\n${n.body}\n`;
+const noteMarkdown = (n) => `# ${n.title || t("common.untitled")}\n\n${n.body}\n`;
 
 // ---------- AI writing help (notebook) ----------
+
+/** User-facing text for an error response from the server. */
+function serverError(data) {
+  const msg = t(`err.${data?.error}`);
+  return msg.startsWith("err.") ? t("err.generic") : msg;
+}
 
 function openAssistDialog(task, note) {
   const textarea = $("#noteBody");
@@ -603,23 +660,23 @@ function openAssistDialog(task, note) {
     end = textarea.selectionEnd;
   }
   const text = note.body.slice(start, end).trim();
-  if (!text) return toast("先在笔记里写一点内容，再用 AI 帮写");
-  if (text.length > 3000) return toast("一次最多处理 3000 字，请先选中一部分", "error");
+  if (!text) return toast(t("assist.needText"));
+  if (text.length > 3000) return toast(t("assist.tooLong"), "error");
 
-  const label = ASSIST_MENU.find(([t]) => t === task)[1];
-  const dlg = $("#dialog");
-  dlg.innerHTML = `
-    <form method="dialog" class="dlg">
-      <h2>AI 帮写：${esc(label)}</h2>
-      <details class="src"><summary>原文（${text.length} 字）</summary><blockquote>${esc(text)}</blockquote></details>
-      <div class="preview prose assist-result" id="assistResult"><span class="typing"></span></div>
-      <p class="meta">AI 只改写你写下的内容，可能不完全准确，请自己看一遍再使用。</p>
+  const dlg = openDialog(
+    "assist",
+    `<form method="dialog" class="dlg">
+      <h2>${t("assist.title", { label: t(`assist.${task}`) })}</h2>
+      <details class="src"><summary>${t("assist.original", { n: text.length })}</summary><blockquote>${esc(text)}</blockquote></details>
+      <div class="preview prose assist-result" id="assistResult"><span class="typing" data-label="${esc(t("common.working"))}"></span></div>
+      <p class="meta">${t("assist.note")}</p>
       <menu>
-        <button value="cancel" class="ghost">取消</button>
-        <button value="insert" class="ghost" id="assistInsert" disabled>插入到原文后面</button>
-        <button value="replace" class="primary" id="assistReplace" disabled>替换原文</button>
+        <button value="cancel" class="ghost">${t("common.cancel")}</button>
+        <button value="insert" class="ghost" id="assistInsert" disabled>${t("assist.insert")}</button>
+        <button value="replace" class="primary" id="assistReplace" disabled>${t("assist.replace")}</button>
       </menu>
-    </form>`;
+    </form>`
+  );
   let result = "";
   const controller = new AbortController();
   dlg.onclose = async () => {
@@ -634,10 +691,8 @@ function openAssistDialog(task, note) {
     await store.put("notes", note);
     state.notePreview = false;
     renderNotes();
-    toast(action === "replace" ? "已替换" : "已插入");
+    toast(action === "replace" ? t("assist.replaced") : t("assist.inserted"));
   };
-  dlg.returnValue = "";
-  dlg.showModal();
 
   const out = $("#assistResult");
   const finish = (html) => {
@@ -650,23 +705,23 @@ function openAssistDialog(task, note) {
   fetch("/api/assist", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ task, text, role: state.role }),
+    body: JSON.stringify({ task, text, role: state.role, lang: getLang() }),
     signal: controller.signal,
   })
     .then(async (res) => {
       if ((res.headers.get("content-type") || "").includes("application/json")) {
         const data = await res.json();
-        return finish(data.type === "crisis" ? crisisHtml() : `<p class="msg error">${esc(data.message || "出错了，请稍后再试。")}</p>`);
+        return finish(data.type === "crisis" ? crisisHtml() : `<p class="msg error">${esc(serverError(data))}</p>`);
       }
-      await readStream(res, (t) => {
-        result += t;
+      await readStream(res, (chunk) => {
+        result += chunk;
         out.innerHTML = md(result);
       });
       result = result.trim();
-      finish(result ? md(result) : '<p class="msg error">没有收到结果，请再试一次。</p>');
+      finish(result ? md(result) : `<p class="msg error">${t("err.noResult")}</p>`);
     })
     .catch((err) => {
-      if (err.name !== "AbortError") finish('<p class="msg error">网络出错了，请稍后再试。</p>');
+      if (err.name !== "AbortError") finish(`<p class="msg error">${t("err.network")}</p>`);
     });
 }
 
@@ -701,11 +756,11 @@ notesEl.addEventListener("click", async (e) => {
     state.notePreview = act === "preview";
     renderNotes();
   } else if (act === "export" && note) {
-    downloadText(note.title || "笔记", noteMarkdown(note));
+    downloadText(note.title || t("notes.fileName"), noteMarkdown(note));
   } else if (act === "export-all") {
-    downloadText(`未言笔记-${new Date().toISOString().slice(0, 10)}`, state.notes.map(noteMarkdown).join("\n---\n\n"));
+    downloadText(t("notes.exportName", { date: new Date().toISOString().slice(0, 10) }), state.notes.map(noteMarkdown).join("\n---\n\n"));
   } else if (act === "delete" && note) {
-    if (!confirm(`删除笔记《${note.title || "未命名笔记"}》？删除后无法恢复。`)) return;
+    if (!confirm(t("notes.confirmDelete", { t: note.title || t("common.untitled") }))) return;
     await store.remove("notes", note.id);
     state.notes = state.notes.filter((n) => n !== note);
     state.noteId = null;
@@ -716,10 +771,10 @@ notesEl.addEventListener("click", async (e) => {
 // ---------- chat ----------
 
 function scopeOptions() {
-  const opts = [{ value: "courses", label: "课程与平台参考资料" }];
+  const opts = [{ value: "courses", label: t("scope.courses") }];
   if (state.uploads.length) {
-    opts.push({ value: "uploads", label: "我上传的全部资料" });
-    for (const d of state.uploads) opts.push({ value: `upload:${d.id}`, label: `我的资料：${d.title}` });
+    opts.push({ value: "uploads", label: t("scope.uploads") });
+    for (const d of state.uploads) opts.push({ value: `upload:${d.id}`, label: t("scope.upload", { title: d.title }) });
   }
   return opts;
 }
@@ -743,11 +798,14 @@ function scopeDocIds() {
 }
 
 function crisisHtml() {
-  const lines = state.safety.message.split(/\n+/).map((p) => `<p>${esc(p)}</p>`).join("");
-  const hotlines = visibleHotlines(state.safety.hotlines)
-    .map((h) => `<li><a href="tel:${esc(h.number)}"><span>${esc(h.name)}</span><b>${esc(h.number)}</b></a></li>`)
+  const lines = safetyText("message")
+    .split(/\n+/)
+    .map((p) => `<p>${esc(p)}</p>`)
     .join("");
-  return `<div class="crisis"><h3>你的安全最重要</h3>${lines}<ul class="hotlines">${hotlines}</ul></div>`;
+  const hotlines = visibleHotlines(state.safety.hotlines)
+    .map((h) => `<li><a href="tel:${esc(h.number)}"><span>${esc(hotlineName(h))}</span><b>${esc(h.number)}</b></a></li>`)
+    .join("");
+  return `<div class="crisis"><h3>${t("crisis.title")}</h3>${lines}<ul class="hotlines">${hotlines}</ul></div>`;
 }
 
 function withCites(text, count) {
@@ -756,17 +814,15 @@ function withCites(text, count) {
 
 function messageHtml(m, i) {
   if (m.role === "user") return `<div class="msg user">${esc(m.content)}</div>`;
-  if (m.kind === "crisis") {
-    return `<div class="msg">${crisisHtml()}<small class="hint">这条消息没有发送给 AI。</small></div>`;
-  }
-  if (m.kind === "notice") return `<div class="msg notice">${esc(m.content)}</div>`;
-  if (m.kind === "error") return `<div class="msg error">${esc(m.content)}</div>`;
+  if (m.kind === "crisis") return `<div class="msg">${crisisHtml()}<small class="hint">${t("chat.notSent")}</small></div>`;
+  if (m.kind === "notice") return `<div class="msg notice">${esc(t(m.key))}</div>`;
+  if (m.kind === "error") return `<div class="msg error">${esc(m.key ? t(m.key) : m.content)}</div>`;
 
   const sources = m.sources
     .map(
       (s, n) => `
       <details class="src">
-        <summary><span>[${n + 1}] 《${esc(s.title)}》</span><span class="kind">${KIND_LABEL[s.kind] || ""}</span></summary>
+        <summary><span>[${n + 1}] ${esc(quote(s.title))}</span><span class="kind">${t(`kind.${s.kind}`)}</span></summary>
         <blockquote>${esc(s.text)}</blockquote>
       </details>`
     )
@@ -774,14 +830,14 @@ function messageHtml(m, i) {
   return `
     <div class="msg ai" data-i="${i}">
       <div class="prose">${m.content ? md(withCites(m.content, m.sources.length)) : ""}</div>
-      ${m.pending ? '<span class="typing"></span>' : ""}
-      <div class="sources"><span class="sources-label">依据的资料（点开可看原文）</span>${sources}</div>
+      ${m.pending ? `<span class="typing" data-label="${esc(t("chat.sending"))}"></span>` : ""}
+      <div class="sources"><span class="sources-label">${t("chat.sources")}</span>${sources}</div>
       ${
         m.pending
           ? ""
           : `<div class="msg-actions">
-              <button class="ghost small" data-act="save" data-i="${i}">记笔记</button>
-              <button class="ghost small" data-act="copy" data-i="${i}">复制</button>
+              <button class="ghost small" data-act="save" data-i="${i}">${t("chat.save")}</button>
+              <button class="ghost small" data-act="copy" data-i="${i}">${t("chat.copy")}</button>
             </div>`
       }
     </div>`;
@@ -792,8 +848,8 @@ function renderMessages() {
   if (!state.messages.length) {
     el.innerHTML = `
       <div class="chat-intro">
-        <p>你可以问关于课程内容的问题，也可以先在“我的资料”里上传自己找到的资料，再把“回答依据”切换过去。</p>
-        <p>未言只根据所选资料回答。资料里没有的内容，它会直接告诉你。</p>
+        <p>${t("chat.intro1")}</p>
+        <p>${t("chat.intro2")}</p>
       </div>`;
     return;
   }
@@ -876,7 +932,7 @@ function lastAnsweredQuestion(before) {
 
 function updateComposer() {
   $("#sendBtn").disabled = state.busy;
-  $("#sendBtn").textContent = state.busy ? "回答中…" : "发送";
+  $("#sendBtn").textContent = state.busy ? t("chat.sending") : t("chat.send");
 }
 
 async function ask(question) {
@@ -892,11 +948,7 @@ async function ask(question) {
 
   const docIds = scopeDocIds();
   if (!docIds.length) {
-    state.messages.push({
-      role: "assistant",
-      kind: "notice",
-      content: "现在还没有可以作为依据的资料。课程上线后就可以提问；你也可以先到“我的资料”上传资料。",
-    });
+    state.messages.push({ role: "assistant", kind: "notice", key: "chat.noDocs" });
     return renderMessages();
   }
 
@@ -904,18 +956,11 @@ async function ask(question) {
   const previous = lastAnsweredQuestion(userIndex);
   if (!hits.length && previous && isFollowUp(question)) hits = search(state.index, `${previous} ${question}`, { topK: 5, docIds });
   if (!hits.length) {
-    state.messages.push({ role: "assistant", kind: "notice", content: NO_HIT });
+    state.messages.push({ role: "assistant", kind: "notice", key: "chat.noHit" });
     return renderMessages();
   }
 
-  const msg = {
-    role: "assistant",
-    kind: "answer",
-    content: "",
-    pending: true,
-    question,
-    sources: mergeByDoc(hits),
-  };
+  const msg = { role: "assistant", kind: "answer", content: "", pending: true, question, sources: mergeByDoc(hits) };
   const i = state.messages.push(msg) - 1;
   state.busy = true;
   updateComposer();
@@ -928,26 +973,24 @@ async function ask(question) {
       body: JSON.stringify({
         question,
         role: state.role,
+        lang: getLang(),
         history: historyForServer(userIndex),
         sources: msg.sources.map(({ title, text }) => ({ title, text })),
       }),
     });
     if ((res.headers.get("content-type") || "").includes("application/json")) {
       const data = await res.json();
-      if (data.type === "crisis") {
-        state.messages[i] = { role: "assistant", kind: "crisis" };
-      } else {
-        Object.assign(msg, { kind: "error", content: data.message || "出错了，请稍后再试。" });
-      }
+      if (data.type === "crisis") state.messages[i] = { role: "assistant", kind: "crisis" };
+      else Object.assign(msg, { kind: "error", content: serverError(data) });
     } else {
       await readStream(res, (text) => {
         msg.content += text;
         renderStreaming(i);
       });
-      if (!msg.content) Object.assign(msg, { kind: "error", content: "没有收到回答，请再试一次。" });
+      if (!msg.content) Object.assign(msg, { kind: "error", key: "err.noAnswer" });
     }
   } catch {
-    Object.assign(msg, { kind: "error", content: "网络出错了，请检查网络后再试。" });
+    Object.assign(msg, { kind: "error", key: "err.network" });
   } finally {
     msg.pending = false;
     state.busy = false;
@@ -956,9 +999,9 @@ async function ask(question) {
   }
 }
 
-function autosize(t) {
-  t.style.height = "auto";
-  t.style.height = `${Math.min(t.scrollHeight, 160)}px`;
+function autosize(el) {
+  el.style.height = "auto";
+  el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
 }
 
 $("#question").addEventListener("input", (e) => autosize(e.target));
@@ -987,46 +1030,71 @@ $("#messages").addEventListener("click", async (e) => {
   if (!btn) return;
   const m = state.messages[Number(btn.dataset.i)];
   if (!m) return;
-  const sourceList = m.sources.map((s, n) => `[${n + 1}]《${s.title}》`).join(" ");
+  const sourceList = m.sources.map((s, n) => `[${n + 1}] ${quote(s.title)}`).join(" ");
   if (btn.dataset.act === "save") {
     openSaveDialog({
       title: m.question,
-      body: `**问：${m.question}**\n\n${m.content}`,
-      source: `问问未言，依据 ${sourceList}`,
+      body: t("chat.noteBody", { q: m.question, a: m.content }),
+      source: t("chat.noteSource", { list: sourceList }),
     });
   } else if (btn.dataset.act === "copy") {
     try {
-      await navigator.clipboard.writeText(`${m.content}\n\n来源：${sourceList}`);
-      toast("已复制");
+      await navigator.clipboard.writeText(`${m.content}\n\n${t("chat.copySources", { list: sourceList })}`);
+      toast(t("chat.copied"));
     } catch {
-      toast("复制失败，请手动选择文字复制", "error");
+      toast(t("chat.copyFail"), "error");
     }
   }
 });
 
-// ---------- dialogs: help, about, first-visit notice ----------
+// ---------- help, about, first-visit welcome ----------
 
-function showInfo(html) {
-  const dlg = $("#dialog");
-  dlg.innerHTML = `<form method="dialog" class="dlg">${html}<menu><button value="ok" class="primary">我知道了</button></menu></form>`;
-  dlg.onclose = null;
-  dlg.showModal();
+function showInfo(kind, html) {
+  openDialog(kind, `<form method="dialog" class="dlg">${html}<menu><button value="ok" class="primary">${t("common.ok")}</button></menu></form>`);
 }
 
 function showHelp() {
-  showInfo(`<h2>需要帮助？</h2>${crisisHtml()}`);
+  showInfo("help", `<h2>${t("help.title")}</h2>${crisisHtml()}`);
 }
 
 function showAbout() {
-  showInfo(`
-    <h2>关于未言</h2>
-    <p>${esc(state.safety.disclaimer)}</p>
-    <p class="meta">笔记和你上传的资料只保存在这台设备的浏览器里。提问时，和问题相关的几段资料会发送给 AI 模型来生成回答。</p>
-    <p class="meta">你的身份：${ROLE_LABEL[state.role] || "未选择"}（可以在课程页更改）</p>
-    <p class="meta">当前模式：${state.status.mock ? "测试模式（未连接 AI 模型）" : `已连接 AI 模型（${esc(state.status.model)}）`}</p>`);
+  const role = ROLES.includes(state.role) ? t(`role.${state.role}`) : t("role.none");
+  const mode = state.status.mock ? t("about.mock") : t("about.live", { m: esc(state.status.model) });
+  showInfo(
+    "about",
+    `<h2>${t("about.title")}</h2>
+    <p>${esc(safetyText("disclaimer"))}</p>
+    <p class="meta">${t("about.data")}</p>
+    <p class="meta">${t("about.role", { r: role })}</p>
+    <p class="meta">${t("about.mode", { m: mode })}</p>`
+  );
+}
+
+function renderWelcome() {
+  const dlg = openDialog(
+    "welcome",
+    `<form method="dialog" class="dlg">
+      <div class="dlg-top">
+        <h2>${t("welcome.title")}</h2>
+        <button type="button" class="lang-btn" data-lang-toggle aria-label="${t("lang.switchAria")}">${t("lang.switch")}</button>
+      </div>
+      <p>${esc(safetyText("disclaimer"))}</p>
+      <p class="meta">${t("welcome.who")}</p>
+      <div class="role-pick">
+        <button value="parent" class="primary">${t("welcome.parent")}</button>
+        <button value="student" class="primary">${t("welcome.student")}</button>
+        <button value="none" class="ghost">${t("welcome.browse")}</button>
+      </div>
+    </form>`
+  );
+  dlg.onclose = () => {
+    storageSet("unspoken.notice.v1", "1");
+    if (ROLES.includes(dlg.returnValue)) setRole(dlg.returnValue);
+  };
 }
 
 document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-lang-toggle]")) return switchLang();
   const open = e.target.closest("[data-open]")?.dataset.open;
   if (open === "help") showHelp();
   if (open === "about") showAbout();
@@ -1034,62 +1102,33 @@ document.addEventListener("click", (e) => {
   if (nav) setView(nav);
 });
 
-function maybeShowNotice() {
-  const key = "unspoken.notice.v1";
-  if (storageGet(key)) return;
-  const dlg = $("#dialog");
-  dlg.innerHTML = `
-    <form method="dialog" class="dlg">
-      <h2>欢迎来到未言</h2>
-      <p>${esc(state.safety.disclaimer)}</p>
-      <p class="meta">你是哪一位？我们会为你推荐合适的课程。之后可以在课程页随时更改。</p>
-      <div class="role-pick">
-        <button value="parent" class="primary">我是家长</button>
-        <button value="student" class="primary">我是学生</button>
-        <button value="none" class="ghost">先随便看看</button>
-      </div>
-    </form>`;
-  dlg.onclose = () => {
-    storageSet(key, "1");
-    if (dlg.returnValue === "parent" || dlg.returnValue === "student") setRole(dlg.returnValue);
-  };
-  dlg.returnValue = "";
-  dlg.showModal();
-}
-
 // ---------- start ----------
 
 async function init() {
+  setLang(detectLang(storageGet("unspoken.lang"), navigator.languages || [navigator.language]));
+  applyStaticText();
   setView("courses");
-  state.role = ROLE_LABEL[storageGet("unspoken.role")] ? storageGet("unspoken.role") : "";
+  const savedRole = storageGet("unspoken.role");
+  state.role = ROLES.includes(savedRole) ? savedRole : "";
   state.done = loadDone();
   try {
-    const [status, safety, courses, library] = await Promise.all([
-      getJson("/api/status"),
-      getJson("/config/safety.json"),
-      getJson("/api/courses"),
-      getJson("/api/library"),
-    ]);
-    Object.assign(state, { status, safety, courses, library });
+    const [status, safety] = await Promise.all([getJson("/api/status"), getJson("/config/safety.json")]);
+    Object.assign(state, { status, safety });
+    await loadContent();
   } catch {
-    toast("连接服务器失败，请刷新页面重试", "error");
+    toast(t("err.server"), "error");
   }
   try {
     state.uploads = (await store.all("docs")).sort((a, b) => b.addedAt - a.addedAt);
     state.notes = (await store.all("notes")).sort((a, b) => b.updatedAt - a.updatedAt);
-    if (await store.isMemoryOnly()) toast("这个浏览器不能保存数据（可能是无痕模式），关闭页面后笔记会丢失", "error");
+    if (await store.isMemoryOnly()) toast(t("err.memoryOnly"), "error");
   } catch {
-    toast("读取本地笔记失败", "error");
+    toast(t("err.localRead"), "error");
   }
   $("#mockBanner").hidden = !state.status.mock;
   rebuildIndex();
-  renderCourses();
-  renderLibrary();
-  renderNotes();
-  renderScope();
-  renderMessages();
-  updateComposer();
-  maybeShowNotice();
+  renderAll();
+  if (!storageGet("unspoken.notice.v1")) renderWelcome();
 }
 
 init();

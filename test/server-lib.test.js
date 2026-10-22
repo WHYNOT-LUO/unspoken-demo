@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseFrontMatter, loadDocs } from "../lib/content.js";
+import { parseFrontMatter, loadDocs, loadLocalized } from "../lib/content.js";
 import { buildMessages, buildAssistMessages, ASSIST_TASKS, SYSTEM_PROMPT } from "../lib/prompt.js";
 import { createLimiter } from "../lib/ratelimit.js";
 import { parseEnv } from "../lib/config.js";
@@ -112,4 +112,22 @@ test("buildAssistMessages uses a fixed server-side instruction per task", () => 
     assert.match(msgs.at(-1).content, /我很生气/);
     assert.match(msgs.at(-1).content, /学生/);
   }
+});
+
+test("buildMessages asks for English answers when lang is en", () => {
+  const sources = [{ title: "t", text: "x" }];
+  assert.match(buildMessages({ question: "q", sources, lang: "en" }).at(-1).content, /English/);
+  assert.doesNotMatch(buildMessages({ question: "q", sources, lang: "zh" }).at(-1).content, /【回答语言】/);
+  assert.match(buildAssistMessages({ task: "points", text: "hi", lang: "en" }).at(-1).content, /English/);
+});
+
+test("loadCourses returns the English folder when asked, else Chinese", () => {
+  const dir = mkdtempSync(join(tmpdir(), "unspoken-"));
+  writeFileSync(join(dir, "a.md"), "---\ntitle: 中文课\n---\n正文");
+  assert.equal(loadLocalized(dir, "en")[0].title, "中文课");
+  mkdirSync(join(dir, "en"));
+  writeFileSync(join(dir, "en", "a.md"), "---\ntitle: English lesson\n---\nBody");
+  assert.equal(loadLocalized(dir, "en")[0].title, "English lesson");
+  assert.equal(loadLocalized(dir, "zh")[0].title, "中文课");
+  assert.equal(loadLocalized(dir, "zh").length, 1);
 });

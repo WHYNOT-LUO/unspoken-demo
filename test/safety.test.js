@@ -39,3 +39,24 @@ test("shipped config only shows hotlines a person has verified", () => {
     assert.ok(h.number);
   }
 });
+
+test("detects English crisis language on word boundaries", () => {
+  assert.equal(detectCrisis("Sometimes I want to kill myself.", config.keywords), true);
+  assert.equal(detectCrisis("I have been cutting myself", config.keywords), true);
+  assert.equal(detectCrisis("My dad hits me when he is drunk", config.keywords), true);
+  assert.equal(detectCrisis("I don't want to live anymore", config.keywords), true);
+});
+
+test("English words that merely contain a keyword are not flagged", () => {
+  assert.equal(detectCrisis("We ate some grapes and talked about drapes", config.keywords), false);
+  assert.equal(detectCrisis("My therapist helped me feel calmer", config.keywords), false);
+  assert.equal(detectCrisis("How do I talk to my parents about money?", config.keywords), false);
+});
+
+test("safety config has both languages for every visible text", () => {
+  for (const lang of ["zh", "en"]) {
+    assert.ok(config[lang].message);
+    assert.ok(config[lang].disclaimer);
+  }
+  for (const h of config.hotlines) assert.ok(h.name.zh && h.name.en);
+});

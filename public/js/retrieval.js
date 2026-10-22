@@ -8,7 +8,27 @@ const STOP_CHARS = new Set(
 
 const CJK = /[㐀-䶿一-鿿]/;
 
+// English filler words. Matching on these says nothing about the topic.
+const STOP_WORDS = new Set(
+  ("a an the and or but if so of to in on at by for with about from into over as is are was were be been being am " +
+    "do does did doing have has had i me my mine we us our you your he him his she her it its they them their " +
+    "this that these those what which who whom whose when where why how can could should would will shall may might must " +
+    "not no yes just very too also than then there here some any all more most other such only own same again " +
+    "get got like want know think tell let make really thing way").split(" ")
+);
+
+/** Light English stemming so "parents/parent", "asking/ask", "worries/worry" match. */
+function stem(word) {
+  let w = word;
+  if (w.length > 4 && w.endsWith("ies")) w = `${w.slice(0, -3)}y`;
+  else if (w.length > 3 && w.endsWith("s") && !/(ss|us|is)$/.test(w)) w = w.slice(0, -1);
+  if (w.length > 5 && w.endsWith("ing")) w = w.slice(0, -3);
+  else if (w.length > 5 && w.endsWith("ed")) w = w.slice(0, -2);
+  return w;
+}
+
 function isStopToken(token) {
+  if (!CJK.test(token)) return STOP_WORDS.has(token);
   return [...token].every((ch) => STOP_CHARS.has(ch));
 }
 
@@ -28,8 +48,11 @@ export function tokenize(text) {
   return tokens;
 }
 
-function contentTokens(text) {
-  return tokenize(text).filter((t) => !isStopToken(t));
+/** Search tokens without filler words; English words are stemmed. */
+export function contentTokens(text) {
+  return tokenize(text)
+    .filter((t) => !isStopToken(t))
+    .map((t) => (CJK.test(t) ? t : stem(t)));
 }
 
 /** Split text into chunks of at most `size` characters, preferring paragraph boundaries. */
@@ -70,7 +93,9 @@ export function buildIndex(docs) {
   const chunks = [];
   const df = new Map();
   for (const doc of docs) {
-    for (const text of chunkText(doc.text)) {
+    // English needs more characters than Chinese to say the same thing, so its passages are longer.
+    const size = CJK.test(doc.text) ? 400 : 900;
+    for (const text of chunkText(doc.text, { size, overlap: size / 6 })) {
       const tokens = contentTokens(`${doc.title}\n${text}`);
       const tf = new Map();
       for (const t of tokens) tf.set(t, (tf.get(t) || 0) + 1);
@@ -87,7 +112,12 @@ export function buildIndex(docs) {
  * Only these may borrow the previous question's words for retrieval.
  */
 export function isFollowUp(question) {
-  const q = String(question).trim().replace(/[？?。！!\s]+$/, "");
+  const q = String(question).trim().replace(/[？?。！!.\s]+$/, "");
+  if (!CJK.test(q)) {
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length || words.length > 6) return false;
+    return /^(and|but|so|then|what about|how about|why|how come|what if|how)\b/.test(words.join(" "));
+  }
   if (q.length > 12) return false;
   return /^(那|那么|这|这个|它|所以|然后|具体|还有|为什么|怎么|如果|可是|但是)/.test(q) || /呢$/.test(q);
 }

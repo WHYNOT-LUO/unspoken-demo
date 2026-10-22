@@ -4,72 +4,76 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>未言 Unspoken</title>
-  <meta name="description" content="情绪教育学习平台：课程、基于资料的问答、私人笔记本">
+  <meta name="description" content="情绪教育学习平台 · Emotional education for parents and students">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body data-view="courses">
   <header class="topbar">
-    <span class="brand-mark">未言</span>
-    <button class="help-chip" data-open="help">需要帮助</button>
+    <span class="brand-mark" data-i18n="brand.mark">未言</span>
+    <span class="topbar-actions">
+      <button class="lang-btn" data-lang-toggle data-i18n="lang.switch" data-i18n-aria="lang.switchAria">EN</button>
+      <button class="help-chip" data-open="help" data-i18n="nav.helpChip">需要帮助</button>
+    </span>
   </header>
 
   <div class="app">
-    <nav class="rail" aria-label="主导航">
+    <nav class="rail" data-i18n-aria="nav.aria" aria-label="主导航">
       <div class="brand">
-        <span class="brand-mark">未言</span>
-        <span class="brand-sub">Unspoken</span>
+        <span class="brand-mark" data-i18n="brand.mark">未言</span>
+        <span class="brand-sub" data-i18n="brand.sub">Unspoken</span>
       </div>
       <button class="nav-item" data-nav="courses">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4z"/><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H14a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>
-        <span>课程</span>
+        <span data-i18n="nav.courses">课程</span>
       </button>
       <button class="nav-item nav-chat" data-nav="chat">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4 3v-3H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>
-        <span>问问未言</span>
+        <span data-i18n="nav.chat">问问未言</span>
       </button>
       <button class="nav-item" data-nav="library">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>
-        <span>我的资料</span>
+        <span data-i18n="nav.library">我的资料</span>
       </button>
       <button class="nav-item" data-nav="notes">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h9l3 3v13H6z"/><path d="M9 11h6M9 15h4"/></svg>
-        <span>笔记本</span>
+        <span data-i18n="nav.notes">笔记本</span>
       </button>
       <div class="rail-foot">
-        <button class="help-link" data-open="help">需要帮助？</button>
-        <button class="about-link" data-open="about">关于未言</button>
+        <button class="lang-btn" data-lang-toggle data-i18n="lang.switch" data-i18n-aria="lang.switchAria">EN</button>
+        <button class="help-link" data-open="help" data-i18n="nav.help">需要帮助？</button>
+        <button class="about-link" data-open="about" data-i18n="nav.about">关于未言</button>
       </div>
     </nav>
 
     <main class="main">
-      <section class="view" id="view-courses" aria-label="课程"></section>
-      <section class="view" id="view-library" aria-label="我的资料"></section>
-      <section class="view" id="view-notes" aria-label="笔记本"></section>
+      <section class="view" id="view-courses" data-i18n-aria="nav.courses" aria-label="课程"></section>
+      <section class="view" id="view-library" data-i18n-aria="nav.library" aria-label="我的资料"></section>
+      <section class="view" id="view-notes" data-i18n-aria="nav.notes" aria-label="笔记本"></section>
     </main>
 
-    <aside class="chat" id="view-chat" aria-label="问问未言">
+    <aside class="chat" id="view-chat" data-i18n-aria="chat.title" aria-label="问问未言">
       <header class="chat-head">
-        <h2>问问未言</h2>
-        <button class="ghost small" id="clearChat">清空对话</button>
+        <h2 data-i18n="chat.title">问问未言</h2>
+        <button class="ghost small" id="clearChat" data-i18n="chat.clear">清空对话</button>
       </header>
-      <p class="mock-banner" id="mockBanner" hidden>测试模式：尚未连接 AI 模型，回答只用于检查流程。</p>
+      <p class="mock-banner" id="mockBanner" data-i18n="chat.mock" hidden>测试模式：尚未连接 AI 模型，回答只用于检查流程。</p>
       <label class="scope">
-        <span>回答依据</span>
+        <span data-i18n="chat.scope">回答依据</span>
         <select id="scope"></select>
       </label>
       <div class="messages" id="messages" aria-live="polite"></div>
       <form class="composer" id="composer">
-        <textarea id="question" rows="2" maxlength="1000" placeholder="问一个关于课程或你的资料的问题…" aria-label="你的问题"></textarea>
-        <button type="submit" class="primary" id="sendBtn">发送</button>
+        <textarea id="question" rows="2" maxlength="1000" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.questionAria" placeholder="问一个关于课程或你的资料的问题…" aria-label="你的问题"></textarea>
+        <button type="submit" class="primary" id="sendBtn" data-i18n="chat.send">发送</button>
       </form>
-      <p class="fineprint">只根据所选资料回答 · 不是心理咨询 · <button class="linklike" data-open="help">需要帮助</button></p>
+      <p class="fineprint"><span data-i18n="chat.fine">只根据所选资料回答 · 不是心理咨询 ·</span> <button class="linklike" data-open="help" data-i18n="chat.helpLink">需要帮助</button></p>
     </aside>
   </div>
 
   <div class="sel-toolbar" id="selToolbar" hidden>
-    <button data-sel="note">记笔记</button>
-    <button data-sel="ask">问问未言</button>
+    <button data-sel="note" data-i18n="sel.note">记笔记</button>
+    <button data-sel="ask" data-i18n="sel.ask">问问未言</button>
   </div>
 
   <dialog id="dialog"></dialog>

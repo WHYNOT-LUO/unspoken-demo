@@ -1,7 +1,8 @@
 # Unspoken (未言) — demo
 
-Emotional education web demo for parents and students (Mandarin, China).
+Emotional education web demo for parents and students, in Chinese and English.
 
+- **Languages** — 中文 / EN switch in the sidebar, the phone header and the welcome screen. Remembered per visitor; the first visit follows the browser language. Lessons, templates, safety text, AI answers and AI writing help all follow the chosen language.
 - **First visit** — disclaimer, then "我是家长 / 我是学生 / 先随便看看". The role picks recommended courses and the tone of AI answers. Changeable on the 课程 page.
 - **课程** — courses recommended for the role, progress ("已学完 2 / 7"), suggested questions at the end of each lesson, next lesson. Select text to save it to the notebook or ask about it.
 - **问问未言** — ask questions. Answers come only from the chosen material (courses and platform references, or the user's own uploads), with numbered sources the user can open.
@@ -44,18 +45,18 @@ Double-click `start-public-demo.command` in Finder (or run it in Terminal). It s
 
 ## Add content
 
-- Courses: `.md` or `.txt` files in `content/courses/`. See the README there for the format (`title`, `summary`, `order`, `audience: parent|student|all`, `questions: 问题一 | 问题二`, `draft: true`).
-- Platform reference material: `content/library/`.
+- Courses: `.md` or `.txt` files in `content/courses/` (Chinese) and `content/courses/en/` (English, same file names so progress carries over; if `en/` is empty, English visitors see the Chinese lessons). See the README there for the format (`title`, `summary`, `order`, `audience: parent|student|all`, `questions: 问题一 | 问题二`, `draft: true`).
+- Platform reference material: `content/library/` (and `content/library/en/` for English).
 
 Refresh the page after adding files; no restart needed.
 
 ## Draft courses
 
-The 7 lessons in `content/courses/` (`01-…` to `07-…`) are **drafts written by AI** from the client's project notes, so the demo has something to show. They avoid statistics, quotes and medical claims, and each is marked `draft: true`, which shows a "草稿 · 待审核" badge and a notice in the lesson. Before real use, an expert must review or replace them. To remove them, delete the files. To approve one, edit it and delete the `draft: true` line.
+The 7 lessons in `content/courses/` and their English versions in `content/courses/en/` are **drafts written by AI** from the client's project notes, so the demo has something to show. They avoid statistics, quotes and medical claims, and each is marked `draft: true`, which shows a "草稿 · 待审核" badge and a notice in the lesson. Before real use, an expert must review or replace them. To remove them, delete the files. To approve one, edit it and delete the `draft: true` line.
 
 ## Before showing real users
 
-`public/config/safety.json` holds the crisis message, keyword list, hotline list and disclaimer. **All of it is a draft.** A qualified person must review it. A hotline appears only when `verified` is `true` and `number` is filled in. Only 110 and 120 are enabled now; verify every other number against an official source before enabling it.
+`public/config/safety.json` holds the crisis message and disclaimer (Chinese and English), the hotline list and the crisis keywords (Chinese ones match ignoring punctuation; English ones match whole words). **All of it is a draft.** A qualified person must review it. A hotline appears only when `verified` is `true` and `number` is filled in. Only 110 and 120 are enabled now; verify every other number against an official source before enabling it.
 
 ## Where data lives
 
@@ -74,7 +75,7 @@ The 7 lessons in `content/courses/` (`01-…` to `07-…`) are **drafts written 
 
 ## Known limits
 
-- Retrieval is keyword-based (Chinese bigrams). Questions phrased with words that never appear in the material may get "资料里没有找到". Embedding search would fix this later.
+- Retrieval is keyword-based (Chinese bigrams, English words with light stemming). Questions phrased with words that never appear in the material may get "资料里没有找到". Embedding search would fix this later.
 - No accounts: notes and uploads live in one browser and do not sync between devices.
 - Conversation rehearsal and pattern reflection (from the feasibility doc) are not built.
 
@@ -95,7 +96,8 @@ public/                the web app (no build step)
   js/app.js            UI
   js/retrieval.js      search (shared with tests)
   js/safety.js         crisis detection (shared with server)
-  js/templates.js      note templates
+  js/templates.js      note templates (Chinese and English)
+  js/i18n.js           all interface text in Chinese and English
   config/safety.json   crisis message, hotlines, keywords, disclaimer — needs human review
   vendor/              marked, DOMPurify, mammoth, pdf.js (copied locally; no CDN)
 content/               courses and reference material

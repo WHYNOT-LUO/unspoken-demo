@@ -119,6 +119,11 @@ button { cursor: pointer; }
 .help-link, .about-link { background: none; border: 0; padding: 4px 0; text-align: left; font-size: 13px; }
 .help-link { color: var(--danger); }
 .about-link { color: var(--ink-2); }
+.lang-btn { align-self: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--ink); }
+.lang-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rail-foot .lang-btn { margin-bottom: 8px; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.dlg-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 
 .main { flex: 1; min-width: 0; overflow-y: auto; container-type: inline-size; }
 .view { display: none; padding: 32px clamp(16px, 4vw, 48px) 48px; max-width: 920px; margin: 0 auto; }
@@ -302,7 +307,7 @@ body[data-view="notes"] #view-notes { display: block; }
 .msg.ai { background: var(--bg); padding: 12px 14px; border-radius: 4px 14px 14px 14px; }
 .msg.notice { color: var(--ink-2); font-size: 14px; background: var(--bg); padding: 10px 14px; border-radius: 12px; }
 .msg.error { color: var(--danger); background: var(--danger-soft); padding: 10px 14px; border-radius: 12px; font-size: 14px; }
-.typing::after { content: "正在整理回答…"; color: var(--ink-2); font-size: 13px; }
+.typing::after { content: attr(data-label); color: var(--ink-2); font-size: 13px; }
 .sources { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .sources-label { color: var(--ink-2); }
 .src { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
