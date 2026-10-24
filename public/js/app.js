@@ -713,6 +713,9 @@ function openAssistDialog(task, note) {
     $("#assistReplace").disabled = !ready;
   };
 
+  // Same as chat: crisis language is answered here and never leaves the browser.
+  if (detectCrisis(text, state.safety.keywords)) return finish(crisisHtml());
+
   fetch("/api/assist", {
     method: "POST",
     headers: { "content-type": "application/json" },
