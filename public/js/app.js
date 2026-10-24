@@ -2,7 +2,8 @@ import { marked } from "/vendor/marked.esm.js";
 import DOMPurify from "/vendor/purify.es.mjs";
 import { buildIndex, search, isFollowUp } from "/js/retrieval.js";
 import { detectCrisis, visibleHotlines } from "/js/safety.js";
-import * as store from "/js/store.js";
+import * as localStore from "/js/store.js"; // only to import notes saved in the browser before accounts
+import { get, put, post, patch, del, setUnauthorizedHandler } from "/js/api.js";
 import { fileToText, ACCEPT } from "/js/parse.js";
 import { TEMPLATES } from "/js/templates.js";
 import { t, setLang, getLang, detectLang } from "/js/i18n.js";
@@ -57,16 +58,27 @@ async function getJson(url) {
   return res.json();
 }
 
+/** User-facing text for any API or network error. */
+function errorText(err) {
+  const msg = t(`err.${err?.code}`);
+  return msg.startsWith("err.") ? t("err.generic") : msg;
+}
+
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
 }
 function storageSet(key, value) {
   try { localStorage.setItem(key, value); } catch { /* private mode: ignore */ }
 }
+function storageRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* ignore */ }
+}
 
 // ---------- state ----------
 
 const state = {
+  user: null,
+  authMode: "login",
   status: { mock: true },
   safety: { keywords: [], hotlines: [], zh: {}, en: {} },
   courses: [],
@@ -113,7 +125,7 @@ function applyStaticText() {
 /** Courses and platform references in the current language (English falls back to Chinese). */
 async function loadContent() {
   const lang = getLang();
-  const [courses, library] = await Promise.all([getJson(`/api/courses?lang=${lang}`), getJson(`/api/library?lang=${lang}`)]);
+  const [courses, library] = await Promise.all([get(`/api/courses?lang=${lang}`), get(`/api/library?lang=${lang}`)]);
   Object.assign(state, { courses, library });
   rebuildIndex();
 }
@@ -131,13 +143,20 @@ function renderAll() {
 async function switchLang() {
   setLang(getLang() === "zh" ? "en" : "zh");
   storageSet("unspoken.lang", getLang());
+  applyStaticText();
+  if (!state.user) {
+    state.langChosenSignedOut = true; // applied to the account at the next login
+    return renderAuth({ keepValues: true });
+  }
+  patch("/api/me", { lang: getLang() }).catch(() => {});
   try {
     await loadContent();
-  } catch {
-    toast(t("err.server"), "error");
+  } catch (err) {
+    toast(errorText(err), "error");
   }
   renderAll();
   if ($("#dialog").open && $("#dialog").dataset.kind === "welcome") renderWelcome();
+  if ($("#dialog").open && $("#dialog").dataset.kind === "account") openAccount();
 }
 
 // ---------- navigation ----------
@@ -150,28 +169,30 @@ function setView(view) {
   if (view === "chat") scrollMessages(true);
 }
 
-// ---------- role & progress (kept in this browser) ----------
+// ---------- role & progress (saved in the account) ----------
 
 const ROLES = ["parent", "student"];
 
 function setRole(role) {
   state.role = ROLES.includes(role) ? role : "";
-  storageSet("unspoken.role", state.role);
   renderCourses();
+  patch("/api/me", { role: state.role }).catch((err) => toast(errorText(err), "error"));
 }
 
-function loadDone() {
-  try {
-    return new Set(JSON.parse(storageGet("unspoken.done") || "[]"));
-  } catch {
-    return new Set();
-  }
-}
-
-function toggleDone(id) {
-  if (state.done.has(id)) state.done.delete(id);
+async function toggleDone(id) {
+  const wasDone = state.done.has(id);
+  if (wasDone) state.done.delete(id);
   else state.done.add(id);
-  storageSet("unspoken.done", JSON.stringify([...state.done]));
+  renderCourses();
+  try {
+    if (wasDone) await del(`/api/progress/${encodeURIComponent(id)}`);
+    else await put(`/api/progress/${encodeURIComponent(id)}`);
+  } catch (err) {
+    if (wasDone) state.done.add(id);
+    else state.done.delete(id);
+    renderCourses();
+    toast(errorText(err), "error");
+  }
 }
 
 const forRole = (c) => !state.role || c.audience === "all" || c.audience === state.role;
@@ -278,7 +299,6 @@ $("#view-courses").addEventListener("click", (e) => {
     renderCourses();
   } else if (target.dataset.act === "done") {
     toggleDone(state.courseId);
-    renderCourses();
   }
 });
 
@@ -389,9 +409,10 @@ function openSaveDialog({ title, body, source }) {
       note.updatedAt = now;
       state.notes = [note, ...state.notes.filter((n) => n !== note)];
     }
-    await store.put("notes", note);
+    unsavedNotes.add(note);
+    const saved = await flushNotes();
     renderNotes();
-    toast(t("save.done", { t: note.title }));
+    toast(saved ? t("save.done", { t: note.title }) : t("notes.saveFailed"), saved ? "" : "error");
   };
 }
 
@@ -446,12 +467,13 @@ async function addFiles(files) {
         text: text.slice(0, 300000),
         addedAt: Date.now(),
       };
-      await store.put("docs", doc);
+      await put(`/api/docs/${encodeURIComponent(doc.id)}`, { title: doc.title, name: doc.name, text: doc.text, addedAt: doc.addedAt });
       state.uploads.unshift(doc);
       toast(t("lib.added", { t: doc.title }));
     } catch (err) {
-      const reason = t(`err.file.${err.code || "other"}`);
-      toast(t("lib.readFail", { n: file.name, e: reason.startsWith("err.") ? t("err.file.other") : reason }), "error");
+      const fileReason = t(`err.file.${err.code}`);
+      const reason = fileReason.startsWith("err.") ? errorText(err) : fileReason;
+      toast(t("lib.readFail", { n: file.name, e: reason }), "error");
     } finally {
       state.loadingFiles.splice(state.loadingFiles.indexOf(file.name), 1);
       rebuildIndex();
@@ -495,7 +517,11 @@ libraryEl.addEventListener("click", async (e) => {
   } else if (act === "delete") {
     const doc = state.uploads.find((d) => d.id === id);
     if (!confirm(t("lib.confirmDelete", { t: doc.title }))) return;
-    await store.remove("docs", id);
+    try {
+      await del(`/api/docs/${encodeURIComponent(id)}`);
+    } catch (err) {
+      if (err.status !== 404) return toast(errorText(err), "error");
+    }
     state.uploads = state.uploads.filter((d) => d.id !== id);
     if (state.scope === key) state.scope = state.uploads.length ? "uploads" : "courses";
     rebuildIndex();
@@ -581,17 +607,36 @@ function renderNotes() {
 // Each note is queued separately, so editing another note never drops a pending save.
 const unsavedNotes = new Set();
 
-async function flushNotes() {
+let retryTimer = null;
+
+const pushNote = (n, options) =>
+  put(`/api/notes/${encodeURIComponent(n.id)}`, { title: n.title, body: n.body, createdAt: n.createdAt, updatedAt: n.updatedAt }, options);
+
+/** Saves every queued note. Failed saves stay queued and are retried. Returns true when all were saved. */
+async function flushNotes({ unloading = false } = {}) {
+  if (!state.user) return false;
   const notes = [...unsavedNotes];
   unsavedNotes.clear();
-  await Promise.all(notes.map((n) => store.put("notes", n)));
+  // While the page closes, small saves can still complete (browsers cap keepalive bodies at 64 KB).
+  const results = await Promise.allSettled(
+    notes.map((n) => pushNote(n, { keepalive: unloading && n.body.length < 15000 }))
+  );
+  const failed = notes.filter((n, i) => results[i].status === "rejected" && state.notes.includes(n));
+  for (const n of failed) unsavedNotes.add(n);
   const s = $("#saveState");
+  clearTimeout(retryTimer);
+  if (failed.length) {
+    if (s) s.textContent = t("notes.saveFailed");
+    if (!unloading) retryTimer = setTimeout(() => flushNotes(), 5000);
+    return false;
+  }
   if (s && !unsavedNotes.size) s.textContent = t("notes.saved");
+  return true;
 }
 
 const flushNotesSoon = debounce(flushNotes, 400);
-addEventListener("pagehide", flushNotes);
-document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushNotes());
+addEventListener("pagehide", () => flushNotes({ unloading: true }));
+document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushNotes({ unloading: true }));
 
 function touchNote() {
   const note = state.notes.find((n) => n.id === state.noteId);
@@ -614,8 +659,9 @@ async function createNote({ title = "", body = "" } = {}) {
   state.noteId = note.id;
   state.notePreview = false;
   state.noteQuery = "";
-  await store.put("notes", note);
+  unsavedNotes.add(note);
   renderNotes();
+  flushNotes();
   $(title ? "#noteBody" : "#noteTitle")?.focus();
 }
 
@@ -699,7 +745,8 @@ function openAssistDialog(task, note) {
         ? note.body.slice(0, start) + result + note.body.slice(end)
         : `${note.body.slice(0, end)}\n\n${result}\n${note.body.slice(end)}`;
     note.updatedAt = Date.now();
-    await store.put("notes", note);
+    unsavedNotes.add(note);
+    flushNotes();
     state.notePreview = false;
     renderNotes();
     toast(action === "replace" ? t("assist.replaced") : t("assist.inserted"));
@@ -725,6 +772,7 @@ function openAssistDialog(task, note) {
     .then(async (res) => {
       if ((res.headers.get("content-type") || "").includes("application/json")) {
         const data = await res.json();
+        if (res.status === 401) return showAuth("expired");
         return finish(data.type === "crisis" ? crisisHtml() : `<p class="msg error">${esc(serverError(data))}</p>`);
       }
       await readStream(res, (chunk) => {
@@ -777,7 +825,14 @@ notesEl.addEventListener("click", async (e) => {
   } else if (act === "delete" && note) {
     if (!confirm(t("notes.confirmDelete", { t: note.title || t("common.untitled") }))) return;
     unsavedNotes.delete(note); // a queued save must not bring the note back
-    await store.remove("notes", note.id);
+    try {
+      await del(`/api/notes/${encodeURIComponent(note.id)}`);
+    } catch (err) {
+      if (err.status !== 404) {
+        unsavedNotes.add(note);
+        return toast(errorText(err), "error");
+      }
+    }
     state.notes = state.notes.filter((n) => n !== note);
     state.noteId = null;
     renderNotes();
@@ -998,6 +1053,7 @@ async function ask(question) {
       const data = await res.json();
       if (data.type === "crisis") state.messages[i] = { role: "assistant", kind: "crisis" };
       else Object.assign(msg, { kind: "error", content: serverError(data) });
+      if (res.status === 401) showAuth("expired");
     } else {
       await readStream(res, (text) => {
         msg.content += text;
@@ -1063,7 +1119,7 @@ $("#messages").addEventListener("click", async (e) => {
   }
 });
 
-// ---------- help, about, first-visit welcome ----------
+// ---------- help, about, welcome ----------
 
 function showInfo(kind, html) {
   openDialog(kind, `<form method="dialog" class="dlg">${html}<menu><button value="ok" class="primary">${t("common.ok")}</button></menu></form>`);
@@ -1086,6 +1142,7 @@ function showAbout() {
   );
 }
 
+/** Shown once, right after sign-up: pick a role so lessons can be recommended. */
 function renderWelcome() {
   const dlg = openDialog(
     "welcome",
@@ -1104,16 +1161,326 @@ function renderWelcome() {
     </form>`
   );
   dlg.onclose = () => {
-    storageSet("unspoken.notice.v1", "1");
     if (ROLES.includes(dlg.returnValue)) setRole(dlg.returnValue);
+    offerImport();
   };
 }
+
+// ---------- sign in / sign up ----------
+
+function renderAuth({ message = "", keepValues = false } = {}) {
+  const el = $("#auth");
+  const old = keepValues ? Object.fromEntries(new FormData($("#authForm") || undefined)) : {};
+  const signup = state.authMode === "signup";
+  el.innerHTML = `
+    <div class="auth-card">
+      <div class="auth-top">
+        <span class="brand-mark">${t("brand.mark")}</span>
+        <button type="button" class="lang-btn" data-lang-toggle aria-label="${t("lang.switchAria")}">${t("lang.switch")}</button>
+      </div>
+      <p class="auth-tagline">${t("auth.tagline")}</p>
+      <span class="tabs auth-tabs" role="tablist">
+        <button type="button" role="tab" data-auth-mode="login" class="${signup ? "" : "on"}" aria-selected="${!signup}">${t("auth.login")}</button>
+        <button type="button" role="tab" data-auth-mode="signup" class="${signup ? "on" : ""}" aria-selected="${signup}">${t("auth.signup")}</button>
+      </span>
+      <form class="auth-form" id="authForm" novalidate>
+        <label>${t("auth.email")}
+          <input type="email" name="email" autocomplete="email" required value="${esc(old.email || "")}">
+        </label>
+        <label>${t("auth.password")}${signup ? ` <small>(${t("auth.passwordHint")})</small>` : ""}
+          <input type="password" name="password" autocomplete="${signup ? "new-password" : "current-password"}" required>
+        </label>
+        ${
+          signup
+            ? `<label>${t("auth.invite")}
+                 <input type="text" name="invite" autocomplete="off" autocapitalize="characters" spellcheck="false" required value="${esc(old.invite || "")}">
+               </label>
+               <p class="auth-note">${esc(safetyText("disclaimer"))}</p>
+               <label class="check"><input type="checkbox" name="agree" ${old.agree ? "checked" : ""}> <span>${t("auth.agree")}</span></label>`
+            : ""
+        }
+        <p class="auth-error" id="authError" role="alert">${esc(message)}</p>
+        <button type="submit" class="primary" id="authSubmit">${signup ? t("auth.submitSignup") : t("auth.submitLogin")}</button>
+        <p class="auth-note">${signup ? t("auth.inviteOnly") : t("auth.forgot")}</p>
+      </form>
+    </div>`;
+}
+
+function showAuth(reason = "") {
+  const expired = reason === "expired" && state.user;
+  // Keep edits that have not reached the server; they are saved after the same user logs back in.
+  if (state.user) {
+    state.pendingFor = state.user.email;
+    state.authMode = "login"; // someone who was signed in only needs to log back in
+  }
+  state.user = null;
+  document.body.dataset.auth = "out";
+  if ($("#dialog").open) $("#dialog").close();
+  renderAuth({ message: expired ? t("auth.expired") : "" });
+}
+
+$("#auth").addEventListener("click", (e) => {
+  const mode = e.target.closest("[data-auth-mode]")?.dataset.authMode;
+  if (mode && mode !== state.authMode) {
+    state.authMode = mode;
+    renderAuth({ keepValues: true });
+  }
+});
+
+$("#auth").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form));
+  const signup = state.authMode === "signup";
+  const error = (msg) => ($("#authError").textContent = msg);
+  if (!data.email?.trim() || !data.password || (signup && !data.invite?.trim())) return error(t("auth.needFields"));
+  if (signup && !data.agree) return error(t("auth.needAgree"));
+  const button = $("#authSubmit");
+  button.disabled = true;
+  button.textContent = t("auth.working");
+  try {
+    const { user } = signup
+      ? await post("/api/auth/register", { email: data.email.trim(), password: data.password, invite: data.invite.trim(), lang: getLang() })
+      : await post("/api/auth/login", { email: data.email.trim(), password: data.password });
+    await enterApp(user, { isNew: signup });
+  } catch (err) {
+    error(errorText(err));
+    button.disabled = false;
+    button.textContent = signup ? t("auth.submitSignup") : t("auth.submitLogin");
+  }
+});
+
+/** Load everything that belongs to this account and show the app. */
+async function enterApp(user, { isNew = false } = {}) {
+  const sameUserAsBefore = state.pendingFor === user.email;
+  state.pendingFor = null;
+  if (!sameUserAsBefore) {
+    unsavedNotes.clear();
+    resetUserState();
+  }
+  state.user = user;
+  if (user.lang && user.lang !== getLang() && !state.langChosenSignedOut) {
+    setLang(user.lang);
+    storageSet("unspoken.lang", user.lang);
+  } else if (user.lang !== getLang()) {
+    patch("/api/me", { lang: getLang() }).catch(() => {});
+  }
+  state.langChosenSignedOut = false;
+  state.role = ROLES.includes(user.role) ? user.role : "";
+  document.body.dataset.auth = "in";
+  setView("courses");
+  try {
+    const [notes, docs, done] = await Promise.all([get("/api/notes"), get("/api/docs"), get("/api/progress"), loadContent()]);
+    const waiting = new Map([...unsavedNotes].map((n) => [n.id, n]));
+    state.notes = [...waiting.values(), ...notes.filter((n) => !waiting.has(n.id))].sort((a, b) => b.updatedAt - a.updatedAt);
+    unsavedNotes.clear();
+    for (const n of waiting.values()) unsavedNotes.add(state.notes.find((x) => x.id === n.id));
+    state.uploads = docs;
+    state.done = new Set(done);
+  } catch (err) {
+    toast(errorText(err), "error");
+  }
+  if (unsavedNotes.size) flushNotes();
+  rebuildIndex();
+  renderAll();
+  if (isNew) renderWelcome();
+  else offerImport();
+}
+
+function resetUserState() {
+  Object.assign(state, {
+    uploads: [],
+    notes: [],
+    done: new Set(),
+    role: "",
+    messages: [],
+    courseId: null,
+    noteId: null,
+    noteQuery: "",
+    openDocId: null,
+    scope: "courses",
+  });
+}
+
+async function logout() {
+  await flushNotes();
+  try {
+    await post("/api/auth/logout");
+  } catch {
+    /* the cookie is cleared server-side when reachable; the screen changes either way */
+  }
+  unsavedNotes.clear();
+  state.pendingFor = null;
+  resetUserState();
+  state.user = null;
+  state.authMode = "login";
+  showAuth();
+}
+
+// ---------- account ----------
+
+function openAccount() {
+  const u = state.user;
+  if (!u) return;
+  const joined = new Date(u.createdAt).toLocaleDateString(getLang() === "en" ? "en-GB" : "zh-CN", { dateStyle: "long" });
+  const dlg = openDialog(
+    "account",
+    `<div class="dlg">
+      <h2>${t("account.title")}</h2>
+      <p class="meta">${esc(u.email)} · ${t("account.joined", { date: joined })}</p>
+      <hr>
+      <h3>${t("account.pwTitle")}</h3>
+      <div class="field-row">
+        <input type="password" id="pwCurrent" autocomplete="current-password" placeholder="${t("account.pwCurrent")}" aria-label="${t("account.pwCurrent")}">
+        <input type="password" id="pwNew" autocomplete="new-password" placeholder="${t("account.pwNew")}" aria-label="${t("account.pwNew")}">
+        <button type="button" class="ghost" data-acc="password">${t("account.pwSave")}</button>
+        <p id="pwMsg" role="status"></p>
+      </div>
+      <hr>
+      <h3>${t("account.dataTitle")}</h3>
+      <p class="meta">${t("account.dataNote")}</p>
+      <button type="button" class="ghost" data-acc="export">${t("account.exportAll")}</button>
+      <hr>
+      <h3>${t("account.deleteTitle")}</h3>
+      <p class="meta">${t("account.deleteNote")}</p>
+      <div class="field-row">
+        <input type="password" id="delPassword" autocomplete="current-password" placeholder="${t("auth.password")}" aria-label="${t("auth.password")}">
+        <button type="button" class="danger-btn" data-acc="delete">${t("account.deleteBtn")}</button>
+        <p id="delMsg" role="status"></p>
+      </div>
+      <menu>
+        <button type="button" class="ghost" data-acc="logout">${t("account.logout")}</button>
+        <button type="button" class="primary" data-acc="close">${t("account.close")}</button>
+      </menu>
+    </div>`
+  );
+
+  dlg.querySelector(".dlg").addEventListener("click", async (e) => {
+    const act = e.target.closest("[data-acc]")?.dataset.acc;
+    if (!act) return;
+    const say = (id, text, ok) => {
+      const el = $(id, dlg);
+      el.textContent = text;
+      el.className = ok ? "ok" : "bad";
+    };
+    const passwordError = (err) => (err.code === "bad_credentials" ? t("account.wrongPassword") : errorText(err));
+    if (act === "close") dlg.close();
+    if (act === "logout") {
+      dlg.close();
+      logout();
+    }
+    if (act === "export") {
+      downloadText(t("notes.exportName", { date: new Date().toISOString().slice(0, 10) }), state.notes.map(noteMarkdown).join("\n---\n\n"));
+    }
+    if (act === "password") {
+      try {
+        await post("/api/me/password", { current: $("#pwCurrent", dlg).value, next: $("#pwNew", dlg).value });
+        $("#pwCurrent", dlg).value = "";
+        $("#pwNew", dlg).value = "";
+        say("#pwMsg", t("account.pwDone"), true);
+      } catch (err) {
+        say("#pwMsg", passwordError(err), false);
+      }
+    }
+    if (act === "delete") {
+      try {
+        await del("/api/me", { password: $("#delPassword", dlg).value });
+        dlg.close();
+        unsavedNotes.clear();
+        state.pendingFor = null;
+        resetUserState();
+        state.user = null;
+        showAuth();
+        toast(t("account.deleted"));
+      } catch (err) {
+        say("#delMsg", passwordError(err), false);
+      }
+    }
+  });
+}
+
+// ---------- import what was saved in this browser before accounts ----------
+
+async function offerImport() {
+  if (storageGet("unspoken.importSkip")) return;
+  let notes = [];
+  let docs = [];
+  try {
+    notes = await localStore.all("notes");
+    docs = await localStore.all("docs");
+  } catch {
+    /* nothing stored locally */
+  }
+  let done = [];
+  try {
+    done = JSON.parse(storageGet("unspoken.done") || "[]");
+  } catch {
+    /* ignore */
+  }
+  if (!notes.length && !docs.length && !done.length) return;
+
+  const dlg = openDialog(
+    "import",
+    `<form method="dialog" class="dlg">
+      <h2>${t("import.title")}</h2>
+      <p>${t("import.body", { notes: notes.length, docs: docs.length, done: done.length })}</p>
+      <menu>
+        <button value="never" class="ghost">${t("import.never")}</button>
+        <button value="later" class="ghost">${t("import.later")}</button>
+        <button value="yes" class="primary">${t("import.yes")}</button>
+      </menu>
+    </form>`
+  );
+  dlg.onclose = async () => {
+    if (dlg.returnValue === "never") return storageSet("unspoken.importSkip", "1");
+    if (dlg.returnValue !== "yes") return;
+    let failed = 0;
+    for (const n of notes) {
+      try {
+        await pushNote({ id: n.id, title: n.title || "", body: n.body || "", createdAt: n.createdAt, updatedAt: n.updatedAt });
+        await localStore.remove("notes", n.id);
+      } catch {
+        failed++;
+      }
+    }
+    for (const d of docs) {
+      try {
+        await put(`/api/docs/${encodeURIComponent(d.id)}`, { title: d.title, name: d.name || "", text: d.text, addedAt: d.addedAt });
+        await localStore.remove("docs", d.id);
+      } catch {
+        failed++;
+      }
+    }
+    for (const id of done) {
+      try {
+        await put(`/api/progress/${encodeURIComponent(id)}`);
+      } catch {
+        failed++;
+      }
+    }
+    if (!failed) storageRemove("unspoken.done");
+    try {
+      const [serverNotes, serverDocs, serverDone] = await Promise.all([get("/api/notes"), get("/api/docs"), get("/api/progress")]);
+      state.notes = serverNotes;
+      state.uploads = serverDocs;
+      state.done = new Set(serverDone);
+    } catch {
+      /* keep what is shown */
+    }
+    rebuildIndex();
+    renderAll();
+    toast(failed ? t("import.partial") : t("import.done"), failed ? "error" : "");
+  };
+}
+
+// ---------- global clicks ----------
 
 document.addEventListener("click", (e) => {
   if (e.target.closest("[data-lang-toggle]")) return switchLang();
   const open = e.target.closest("[data-open]")?.dataset.open;
   if (open === "help") showHelp();
   if (open === "about") showAbout();
+  if (open === "account") openAccount();
   const nav = e.target.closest("[data-nav]")?.dataset.nav;
   if (nav) setView(nav);
 });
@@ -1123,28 +1490,22 @@ document.addEventListener("click", (e) => {
 async function init() {
   setLang(detectLang(storageGet("unspoken.lang"), navigator.languages || [navigator.language]));
   applyStaticText();
-  setView("courses");
-  const savedRole = storageGet("unspoken.role");
-  state.role = ROLES.includes(savedRole) ? savedRole : "";
-  state.done = loadDone();
+  setUnauthorizedHandler(() => showAuth("expired"));
   try {
     const [status, safety] = await Promise.all([getJson("/api/status"), getJson("/config/safety.json")]);
     Object.assign(state, { status, safety });
-    await loadContent();
   } catch {
     toast(t("err.server"), "error");
   }
-  try {
-    state.uploads = (await store.all("docs")).sort((a, b) => b.addedAt - a.addedAt);
-    state.notes = (await store.all("notes")).sort((a, b) => b.updatedAt - a.updatedAt);
-    if (await store.isMemoryOnly()) toast(t("err.memoryOnly"), "error");
-  } catch {
-    toast(t("err.localRead"), "error");
-  }
   $("#mockBanner").hidden = !state.status.mock;
-  rebuildIndex();
-  renderAll();
-  if (!storageGet("unspoken.notice.v1")) renderWelcome();
+  try {
+    const { user } = await get("/api/me");
+    if (user) await enterApp(user);
+    else showAuth();
+  } catch (err) {
+    showAuth();
+    toast(errorText(err), "error");
+  }
 }
 
 init();

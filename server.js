@@ -377,7 +377,8 @@ export function createApp(config) {
     ["POST", "/api/auth/register", register, false],
     ["POST", "/api/auth/login", login, false],
     ["POST", "/api/auth/logout", logout, false],
-    ["GET", "/api/me", (req, res, user) => sendJson(res, 200, { user: publicUser(user) }), true],
+    // Public so the app can ask "who am I?" without an error when nobody is logged in.
+    ["GET", "/api/me", (req, res, user) => sendJson(res, 200, { user: user ? publicUser(user) : null }), false],
     ["PATCH", "/api/me", updateMe, true],
     ["POST", "/api/me/password", changePassword, true],
     ["DELETE", "/api/me", deleteMe, true],

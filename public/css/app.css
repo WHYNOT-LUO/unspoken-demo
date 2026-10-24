@@ -350,6 +350,33 @@ dialog::backdrop { background: rgb(30 25 20 / 45%); }
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 12px; box-shadow: var(--shadow); font-size: 14px; max-width: calc(100vw - 32px); }
 .toast.error { background: var(--danger); color: #fff; }
 
+/* ---------- sign-in screen ---------- */
+.auth { display: none; min-height: 100vh; min-height: 100dvh; padding: 32px 16px; align-items: center; justify-content: center; }
+body[data-auth="out"] .auth { display: flex; }
+body[data-auth="out"] .app, body[data-auth="out"] .topbar,
+body[data-auth="pending"] .app, body[data-auth="pending"] .topbar { display: none; }
+.auth-card { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+.auth-top { display: flex; align-items: center; justify-content: space-between; }
+.auth-tagline { margin: 0; color: var(--ink-2); font-size: 14px; }
+.auth-tabs { align-self: flex-start; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.auth-form input[type="email"], .auth-form input[type="password"], .auth-form input[type="text"] { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font-size: 15px; }
+.auth-form input:focus { outline: none; border-color: var(--accent); }
+.auth-form label.check { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--ink); font-size: 14px; }
+.auth-form label.check input { margin-top: 3px; }
+.auth-form .primary { padding: 11px; font-size: 16px; }
+.auth-error { margin: 0; min-height: 1.2em; color: var(--danger); font-size: 14px; }
+.auth-note { margin: 0; color: var(--ink-2); font-size: 13px; }
+
+/* ---------- account dialog ---------- */
+.dlg h3 { margin: 6px 0 0; font-size: 15px; }
+.dlg .field-row { display: flex; flex-direction: column; gap: 8px; }
+.dlg input[type="password"] { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); font-size: 15px; }
+.dlg hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+.dlg .ok { color: var(--accent); font-size: 14px; margin: 0; }
+.dlg .bad { color: var(--danger); font-size: 14px; margin: 0; }
+
 /* ---------- tablet / phone ---------- */
 @media (max-width: 1080px) {
   .chat { width: 340px; }

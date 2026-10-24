@@ -8,11 +8,14 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css">
 </head>
-<body data-view="courses">
+<body data-view="courses" data-auth="pending">
+  <section class="auth" id="auth" aria-live="polite"></section>
+
   <header class="topbar">
     <span class="brand-mark" data-i18n="brand.mark">未言</span>
     <span class="topbar-actions">
       <button class="lang-btn" data-lang-toggle data-i18n="lang.switch" data-i18n-aria="lang.switchAria">EN</button>
+      <button class="lang-btn" data-open="account" data-i18n="nav.account">账户</button>
       <button class="help-chip" data-open="help" data-i18n="nav.helpChip">需要帮助</button>
     </span>
   </header>
@@ -42,6 +45,7 @@
       <div class="rail-foot">
         <button class="lang-btn" data-lang-toggle data-i18n="lang.switch" data-i18n-aria="lang.switchAria">EN</button>
         <button class="help-link" data-open="help" data-i18n="nav.help">需要帮助？</button>
+        <button class="about-link" data-open="account" data-i18n="nav.account">账户</button>
         <button class="about-link" data-open="about" data-i18n="nav.about">关于未言</button>
       </div>
     </nav>

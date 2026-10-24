@@ -106,13 +106,15 @@ test("repeated wrong passwords are throttled", async () => {
 
 test("logout ends the session", async () => {
   const cookie = await app.signUp("bye@test.dev");
-  assert.equal((await app.call("/api/me", { cookie })).status, 200);
+  assert.ok((await (await app.call("/api/me", { cookie })).json()).user);
   await app.call("/api/auth/logout", { method: "POST", cookie });
-  assert.equal((await app.call("/api/me", { cookie })).status, 401);
+  assert.equal((await (await app.call("/api/me", { cookie })).json()).user, null);
+  assert.equal((await app.call("/api/notes", { cookie })).status, 401);
 });
 
 test("protected routes need a session", async () => {
-  for (const path of ["/api/me", "/api/courses", "/api/notes", "/api/docs", "/api/progress"]) {
+  assert.deepEqual(await (await app.call("/api/me")).json(), { user: null });
+  for (const path of ["/api/courses", "/api/notes", "/api/docs", "/api/progress"]) {
     assert.equal((await app.call(path)).status, 401, path);
   }
   const chat = await app.call("/api/chat", { method: "POST", body: { question: "q", sources: [{ title: "t", text: "x" }] } });
@@ -120,7 +122,8 @@ test("protected routes need a session", async () => {
 });
 
 test("a forged session cookie is rejected", async () => {
-  assert.equal((await app.call("/api/me", { cookie: "unspoken_session=not-a-real-token" })).status, 401);
+  assert.deepEqual(await (await app.call("/api/me", { cookie: "unspoken_session=not-a-real-token" })).json(), { user: null });
+  assert.equal((await app.call("/api/notes", { cookie: "unspoken_session=not-a-real-token" })).status, 401);
 });
 
 test("state changes from another website are refused", async () => {
@@ -153,8 +156,8 @@ test("changing the password needs the current one and signs out other devices", 
   assert.equal(wrong.status, 401);
   const ok = await app.call("/api/me/password", { method: "POST", cookie: phone, body: { current: "first password", next: "second password" } });
   assert.equal(ok.status, 200);
-  assert.equal((await app.call("/api/me", { cookie: phone })).status, 200);
-  assert.equal((await app.call("/api/me", { cookie: laptop })).status, 401);
+  assert.ok((await (await app.call("/api/me", { cookie: phone })).json()).user);
+  assert.equal((await (await app.call("/api/me", { cookie: laptop })).json()).user, null);
   const login = await app.call("/api/auth/login", { method: "POST", body: { email: "pw@test.dev", password: "second password" } });
   assert.equal(login.status, 200);
 });
@@ -166,7 +169,7 @@ test("deleting the account removes the user and all their data", async () => {
   assert.equal(wrong.status, 401);
   const res = await app.call("/api/me", { method: "DELETE", cookie, body: { password: "delete me please" } });
   assert.equal(res.status, 200);
-  assert.equal((await app.call("/api/me", { cookie })).status, 401);
+  assert.equal((await (await app.call("/api/me", { cookie })).json()).user, null);
   assert.equal(app.db.userByEmail("delete@test.dev"), undefined);
   const login = await app.call("/api/auth/login", { method: "POST", body: { email: "delete@test.dev", password: "delete me please" } });
   assert.equal(login.status, 401);
