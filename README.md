@@ -71,7 +71,7 @@ All screenshots are from the running app; the AI answers are real responses from
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
   U[User question] --> C{Crisis words?}
   C -- yes --> H[Show help message and emergency numbers<br/>nothing sent to the AI]
   C -- no --> R[Search the selected material<br/>in the browser]
