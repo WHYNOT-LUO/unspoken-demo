@@ -32,6 +32,14 @@ const MIME = {
   ".ico": "image/x-icon",
 };
 
+// Defence in depth on top of DOMPurify: only same-origin scripts, styles, workers and requests.
+const SECURITY_HEADERS = {
+  "content-security-policy":
+    "default-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "no-referrer",
+};
+
 function sendJson(res, status, data) {
   res.writeHead(status, { "content-type": MIME[".json"], "cache-control": "no-store" });
   res.end(JSON.stringify(data));
@@ -240,6 +248,7 @@ export function createApp(config) {
   }
 
   return http.createServer(async (req, res) => {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     try {
       const { pathname, searchParams } = new URL(req.url, "http://localhost");
       if (req.method === "GET" && pathname === "/api/status") {
@@ -254,7 +263,15 @@ export function createApp(config) {
       }
       if (req.method === "POST" && pathname === "/api/chat") return await handleChat(req, res);
       if (req.method === "POST" && pathname === "/api/assist") return await handleAssist(req, res);
-      if (req.method === "GET") return await serveStatic(decodeURIComponent(pathname), res);
+      if (req.method === "GET") {
+        let path;
+        try {
+          path = decodeURIComponent(pathname);
+        } catch {
+          return sendJson(res, 404, { error: "not_found" });
+        }
+        return await serveStatic(path, res);
+      }
       sendJson(res, 405, { error: "method_not_allowed" });
     } catch (err) {
       console.error(err);

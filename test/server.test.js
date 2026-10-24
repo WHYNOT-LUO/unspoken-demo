@@ -117,6 +117,19 @@ test("test-mode reply follows the requested language", async () => {
   assert.match(await (await chat({ ...okBody, lang: "en" })).text(), /Test mode/);
 });
 
+test("a malformed URL is a 404, not a server error", async () => {
+  assert.equal((await fetch(`${base}/%E0%A4%A`)).status, 404);
+});
+
+test("responses carry security headers", async () => {
+  const res = await fetch(`${base}/`);
+  assert.equal(res.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(res.headers.get("referrer-policy"), "no-referrer");
+  const csp = res.headers.get("content-security-policy");
+  assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /frame-ancestors 'none'/);
+});
+
 test("daily visitor limit returns 429", async () => {
   let last;
   for (let i = 0; i < 10; i++) last = await chat(okBody);

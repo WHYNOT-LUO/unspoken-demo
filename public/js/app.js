@@ -577,11 +577,21 @@ function renderNotes() {
     </div>`;
 }
 
-const saveNote = debounce(async (note) => {
-  await store.put("notes", note);
+// Edited notes wait here briefly so typing doesn't write on every key.
+// Each note is queued separately, so editing another note never drops a pending save.
+const unsavedNotes = new Set();
+
+async function flushNotes() {
+  const notes = [...unsavedNotes];
+  unsavedNotes.clear();
+  await Promise.all(notes.map((n) => store.put("notes", n)));
   const s = $("#saveState");
-  if (s) s.textContent = t("notes.saved");
-}, 400);
+  if (s && !unsavedNotes.size) s.textContent = t("notes.saved");
+}
+
+const flushNotesSoon = debounce(flushNotes, 400);
+addEventListener("pagehide", flushNotes);
+document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushNotes());
 
 function touchNote() {
   const note = state.notes.find((n) => n.id === state.noteId);
@@ -593,7 +603,8 @@ function touchNote() {
   if (s) s.textContent = t("notes.saving");
   const item = $(`[data-note="${CSS.escape(note.id)}"] b`);
   if (item) item.textContent = note.title || t("common.untitled");
-  saveNote(note);
+  unsavedNotes.add(note);
+  flushNotesSoon();
 }
 
 async function createNote({ title = "", body = "" } = {}) {
@@ -736,6 +747,7 @@ notesEl.addEventListener("input", (e) => {
 notesEl.addEventListener("click", async (e) => {
   const noteBtn = e.target.closest("[data-note]");
   if (noteBtn) {
+    flushNotes();
     state.noteId = noteBtn.dataset.note;
     state.notePreview = false;
     return renderNotes();
@@ -761,6 +773,7 @@ notesEl.addEventListener("click", async (e) => {
     downloadText(t("notes.exportName", { date: new Date().toISOString().slice(0, 10) }), state.notes.map(noteMarkdown).join("\n---\n\n"));
   } else if (act === "delete" && note) {
     if (!confirm(t("notes.confirmDelete", { t: note.title || t("common.untitled") }))) return;
+    unsavedNotes.delete(note); // a queued save must not bring the note back
     await store.remove("notes", note.id);
     state.notes = state.notes.filter((n) => n !== note);
     state.noteId = null;
