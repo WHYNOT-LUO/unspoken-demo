@@ -146,7 +146,7 @@ async function switchLang() {
   applyStaticText();
   if (!state.user) {
     state.langChosenSignedOut = true; // applied to the account at the next login
-    return renderAuth({ keepValues: true });
+    return state.offline ? showOffline() : renderAuth({ keepValues: true });
   }
   patch("/api/me", { lang: getLang() }).catch(() => {});
   try {
@@ -1219,7 +1219,23 @@ function showAuth(reason = "") {
   renderAuth({ message: expired ? t("auth.expired") : "" });
 }
 
+/** Started without a connection: say so, rather than showing a login form. */
+function showOffline() {
+  state.offline = true;
+  document.body.dataset.auth = "out";
+  $("#auth").innerHTML = `
+    <div class="auth-card">
+      <div class="auth-top">
+        <span class="brand-mark">${t("brand.mark")}</span>
+        <button type="button" class="lang-btn" data-lang-toggle aria-label="${t("lang.switchAria")}">${t("lang.switch")}</button>
+      </div>
+      <p>${t("pwa.offlineStart")}</p>
+      <button type="button" class="primary" data-retry>${t("pwa.retry")}</button>
+    </div>`;
+}
+
 $("#auth").addEventListener("click", (e) => {
+  if (e.target.closest("[data-retry]")) return location.reload();
   const mode = e.target.closest("[data-auth-mode]")?.dataset.authMode;
   if (mode && mode !== state.authMode) {
     state.authMode = mode;
@@ -1487,6 +1503,16 @@ document.addEventListener("click", (e) => {
 
 // ---------- start ----------
 
+// Installable app: the service worker lets the app open offline; data still needs the network.
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+addEventListener("offline", () => toast(t("pwa.offline"), "error"));
+addEventListener("online", () => {
+  toast(t("pwa.online"));
+  if (unsavedNotes.size) flushNotes();
+});
+
 async function init() {
   setLang(detectLang(storageGet("unspoken.lang"), navigator.languages || [navigator.language]));
   applyStaticText();
@@ -1503,6 +1529,7 @@ async function init() {
     if (user) await enterApp(user);
     else showAuth();
   } catch (err) {
+    if (err.code === "network") return showOffline();
     showAuth();
     toast(errorText(err), "error");
   }

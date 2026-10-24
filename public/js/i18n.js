@@ -234,6 +234,11 @@ const zh = {
 
   "notes.saveFailed": "未保存，正在重试…",
 
+  "pwa.offline": "网络已断开。没保存的笔记会在联网后自动保存。",
+  "pwa.online": "已重新联网。",
+  "pwa.offlineStart": "现在没有网络。连上网络后才能打开你的账户。",
+  "pwa.retry": "重试",
+
   "err.bad_email": "邮箱格式不正确。",
   "err.weak_password": "密码至少需要 8 个字符。",
   "err.invite_invalid": "邀请码无效或已经用完。",
@@ -478,6 +483,11 @@ const en = {
   "import.partial": "Some items couldn't be added. You can try again later.",
 
   "notes.saveFailed": "Not saved yet, retrying…",
+
+  "pwa.offline": "You're offline. Unsaved notes will be saved when you're back online.",
+  "pwa.online": "Back online.",
+  "pwa.offlineStart": "You're offline. Unspoken needs a connection to open your account.",
+  "pwa.retry": "Try again",
 
   "err.bad_email": "That email address doesn't look right.",
   "err.weak_password": "Passwords need at least 8 characters.",
