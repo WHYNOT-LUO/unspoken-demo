@@ -2,11 +2,11 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
-import { createApp } from "../server.js";
+import { startApp } from "./helpers.js";
 
 let upstream;
 let app;
-let base;
+let cookie;
 let received;
 let upstreamStatus = 200;
 
@@ -27,30 +27,27 @@ before(async () => {
   });
   await new Promise((r) => upstream.listen(0, "127.0.0.1", r));
 
-  app = createApp({
-    contentDir: "/nonexistent",
+  app = await startApp({
     mock: false,
     llm: { baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, apiKey: "sk-test", model: "test-model", maxTokens: 100 },
-    limits: { perVisitorPerDay: 100, sitePerDay: 100 },
   });
-  await new Promise((r) => app.listen(0, "127.0.0.1", r));
-  base = `http://127.0.0.1:${app.address().port}`;
+  cookie = await app.signUp("proxy@test.dev");
 });
 
-after(() => {
-  app.close();
+after(async () => {
+  await app.close();
   upstream.close();
 });
 
 const chat = () =>
-  fetch(`${base}/api/chat`, {
+  app.call("/api/chat", {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question: "为什么？", history: [], sources: [{ title: "课", text: "内容" }] }),
+    cookie,
+    body: { question: "为什么？", history: [], sources: [{ title: "课", text: "内容" }] },
   });
 
 test("status reports the live model", async () => {
-  assert.deepEqual(await (await fetch(`${base}/api/status`)).json(), { mock: false, model: "test-model" });
+  assert.deepEqual(await (await app.call("/api/status")).json(), { mock: false, model: "test-model" });
 });
 
 test("proxies to /chat/completions with the server-side key and streams the reply back", async () => {
@@ -78,10 +75,10 @@ test("a model error becomes a friendly 502 without leaking details", async () =>
 
 test("assist goes to the model with the writing-assistant instructions", async () => {
   upstreamStatus = 200;
-  const res = await fetch(`${base}/api/assist`, {
+  const res = await app.call("/api/assist", {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ task: "points", text: "今天和妈妈吵架了", role: "student" }),
+    cookie,
+    body: { task: "points", text: "今天和妈妈吵架了", role: "student" },
   });
   await res.text();
   assert.equal(res.status, 200);

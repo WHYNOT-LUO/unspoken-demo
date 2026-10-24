@@ -1,4 +1,4 @@
-// Unspoken demo server: static files, course/library content, and a model proxy.
+// Unspoken server: static app, accounts, per-user data, course content, and the AI model proxy.
 // The API key stays on the server; the browser never sees it.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -9,17 +9,38 @@ import { loadConfig } from "./lib/config.js";
 import { loadLocalized } from "./lib/content.js";
 import { buildMessages, buildAssistMessages, ASSIST_TASKS, ROLES, LANGS } from "./lib/prompt.js";
 import { createLimiter } from "./lib/ratelimit.js";
+import { openDb } from "./lib/db.js";
+import {
+  SESSION_COOKIE,
+  SESSION_DAYS,
+  hashPassword,
+  verifyPassword,
+  newSessionToken,
+  hashToken,
+  validEmail,
+  validPassword,
+  createThrottle,
+} from "./lib/auth.js";
 import { detectCrisis } from "./public/js/safety.js";
 
 const APP_DIR = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(APP_DIR, "public");
 const SAFETY = JSON.parse(readFileSync(join(PUBLIC_DIR, "config/safety.json"), "utf8"));
 
-const MAX_BODY = 100 * 1024;
+const KB = 1024;
 const MAX_QUESTION = 1000;
 const MAX_SOURCES = 8;
 const MAX_SOURCE_CHARS = 2000;
 const MAX_ASSIST_CHARS = 3000;
+const LIMITS = {
+  noteTitle: 200,
+  noteBody: 200_000,
+  notesPerUser: 2000,
+  docTitle: 200,
+  docText: 300_000,
+  docsPerUser: 50,
+};
+const ID = /^[\w-]{1,64}$/;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -27,9 +48,11 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".ico": "image/x-icon",
+  ".bcmap": "application/octet-stream",
 };
 
 // Defence in depth on top of DOMPurify: only same-origin scripts, styles, workers and requests.
@@ -40,64 +63,89 @@ const SECURITY_HEADERS = {
   "referrer-policy": "no-referrer",
 };
 
+class HttpError extends Error {
+  constructor(status, code) {
+    super(code);
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function sendJson(res, status, data) {
   res.writeHead(status, { "content-type": MIME[".json"], "cache-control": "no-store" });
   res.end(JSON.stringify(data));
 }
 
-function readBody(req) {
+function readBody(req, maxBytes) {
   return new Promise((resolveBody, reject) => {
     let size = 0;
     const parts = [];
     req.on("data", (c) => {
       size += c.length;
-      if (size <= MAX_BODY) return parts.push(c);
+      if (size <= maxBytes) return parts.push(c);
       // Reject at once but keep draining a little, so the client still receives the 413.
-      reject(Object.assign(new Error("too large"), { status: 413 }));
-      if (size > 10 * MAX_BODY) req.destroy();
+      reject(new HttpError(413, "too_large"));
+      if (size > 10 * maxBytes) req.destroy();
     });
     req.on("end", () => resolveBody(Buffer.concat(parts).toString("utf8")));
     req.on("error", reject);
   });
 }
 
-function validRole(role) {
-  return role === undefined || role === "" || Object.hasOwn(ROLES, role);
+async function readJson(req, maxBytes = 100 * KB) {
+  const text = await readBody(req, maxBytes);
+  try {
+    const value = JSON.parse(text);
+    if (value === null || typeof value !== "object" || Array.isArray(value)) throw new Error();
+    return value;
+  } catch {
+    throw new HttpError(400, "bad_request");
+  }
 }
 
-function validLang(lang) {
-  return lang === undefined || LANGS.includes(lang);
-}
-
-function validateChat(body) {
-  const { question, history = [], sources, role, lang } = body || {};
-  if (!validRole(role)) return "身份不正确。";
-  if (!validLang(lang)) return "语言不正确。";
-  if (typeof question !== "string" || !question.trim() || question.length > MAX_QUESTION) {
-    return "问题不能为空，且不超过 1000 字。";
-  }
-  if (!Array.isArray(sources) || sources.length === 0 || sources.length > MAX_SOURCES) {
-    return "缺少资料。";
-  }
-  for (const s of sources) {
-    if (typeof s?.title !== "string" || typeof s?.text !== "string" || s.text.length > MAX_SOURCE_CHARS) {
-      return "资料格式不正确。";
+function parseCookies(header = "") {
+  const out = {};
+  for (const part of header.split(";")) {
+    const i = part.indexOf("=");
+    if (i <= 0) continue;
+    try {
+      out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    } catch {
+      /* ignore malformed cookies */
     }
   }
-  if (!Array.isArray(history)) return "对话记录格式不正确。";
-  return null;
+  return out;
+}
+
+/** The visitor's address; behind Cloudflare, cf-connecting-ip is set by Cloudflare and cannot be forged. */
+function clientAddress(req) {
+  return String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.socket.remoteAddress)
+    .split(",")[0]
+    .trim();
+}
+
+const isString = (v, max) => typeof v === "string" && v.length <= max;
+const isTime = (v) => Number.isSafeInteger(v) && v > 0;
+const validRole = (role) => role === undefined || role === "" || Object.hasOwn(ROLES, role);
+const validLang = (lang) => lang === undefined || lang === "" || LANGS.includes(lang);
+
+function validateChat(body) {
+  const { question, history = [], sources, role, lang } = body;
+  if (!validRole(role) || !validLang(lang)) return false;
+  if (typeof question !== "string" || !question.trim() || question.length > MAX_QUESTION) return false;
+  if (!Array.isArray(sources) || sources.length === 0 || sources.length > MAX_SOURCES) return false;
+  if (!sources.every((s) => isString(s?.title, 500) && isString(s?.text, MAX_SOURCE_CHARS))) return false;
+  return Array.isArray(history);
 }
 
 function validateAssist(body) {
-  const { task, text, role, lang } = body || {};
-  if (!validLang(lang)) return "语言不正确。";
-  if (!Object.hasOwn(ASSIST_TASKS, task)) return "不支持的操作。";
-  if (typeof text !== "string" || !text.trim() || text.length > MAX_ASSIST_CHARS) {
-    return "文字不能为空，且不超过 3000 字。";
-  }
-  if (!validRole(role)) return "身份不正确。";
-  return null;
+  const { task, text, role, lang } = body;
+  if (!validRole(role) || !validLang(lang)) return false;
+  if (!Object.hasOwn(ASSIST_TASKS, task)) return false;
+  return typeof text === "string" && text.trim() !== "" && text.length <= MAX_ASSIST_CHARS;
 }
+
+// ---------- model streaming ----------
 
 function sse(res) {
   res.writeHead(200, {
@@ -158,22 +206,16 @@ async function streamModel(res, llm, messages) {
     upstream = await fetch(`${llm.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
-      body: JSON.stringify({
-        model: llm.model,
-        messages,
-        stream: true,
-        temperature: 0.3,
-        max_tokens: llm.maxTokens,
-      }),
+      body: JSON.stringify({ model: llm.model, messages, stream: true, temperature: 0.3, max_tokens: llm.maxTokens }),
       signal: controller.signal,
     });
   } catch (err) {
     console.error("model request failed:", err.message);
-    return sendJson(res, 502, { error: "model", message: "暂时连不上 AI 模型，请稍后再试。" });
+    return sendJson(res, 502, { error: "model" });
   }
   if (!upstream.ok) {
     console.error("model error:", upstream.status, (await upstream.text()).slice(0, 500));
-    return sendJson(res, 502, { error: "model", message: "AI 模型返回了错误，请稍后再试。" });
+    return sendJson(res, 502, { error: "model" });
   }
   sse(res);
   try {
@@ -184,107 +226,267 @@ async function streamModel(res, llm, messages) {
   res.end();
 }
 
+// ---------- app ----------
+
 export function createApp(config) {
-  const limiter = createLimiter({ perKey: config.limits.perVisitorPerDay, global: config.limits.sitePerDay });
+  const dataDir = isAbsolute(config.dataDir) ? config.dataDir : join(APP_DIR, config.dataDir);
+  const db = config.db || openDb(join(dataDir, "unspoken.db"));
   const contentDir = isAbsolute(config.contentDir) ? config.contentDir : join(APP_DIR, config.contentDir);
+  const aiLimiter = createLimiter({ perKey: config.limits.perVisitorPerDay, global: config.limits.sitePerDay });
+  const loginThrottle = createThrottle();
 
-  /**
-   * Shared path for every model request: parse, validate, crisis check, rate limit, then stream.
-   * @param {(body: any) => string | null} validate
-   * @param {(body: any) => string} crisisText the user-written text to screen
-   */
-  async function handleModelRequest(req, res, { validate, crisisText, messages, mockLines }) {
-    let body;
-    try {
-      body = JSON.parse(await readBody(req));
-    } catch (err) {
-      if (err.status === 413) return sendJson(res, 413, { error: "too_large", message: "内容太长了，请缩短后再试。" });
-      return sendJson(res, 400, { error: "bad_request", message: "请求格式不正确。" });
+  // ----- sessions -----
+
+  function currentUser(req) {
+    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+    if (!token) return null;
+    const tokenHash = hashToken(token);
+    const user = db.sessionUser(tokenHash);
+    return user ? { ...user, tokenHash } : null;
+  }
+
+  function cookie(req, value, maxAgeSeconds) {
+    const secure = config.secureCookies || req.headers["x-forwarded-proto"] === "https";
+    return `${SESSION_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSeconds}${secure ? "; Secure" : ""}`;
+  }
+
+  function startSession(req, res, userId) {
+    const token = newSessionToken();
+    db.insertSession(hashToken(token), userId, Date.now() + SESSION_DAYS * 86400_000);
+    res.setHeader("set-cookie", cookie(req, token, SESSION_DAYS * 86400));
+  }
+
+  const publicUser = (u) => ({ email: u.email, role: u.role, lang: u.lang, createdAt: u.created_at });
+
+  // ----- auth routes -----
+
+  async function register(req, res) {
+    const { email, password, invite, lang } = await readJson(req);
+    if (!validEmail(email)) throw new HttpError(400, "bad_email");
+    if (!validPassword(password)) throw new HttpError(400, "weak_password");
+    if (!isString(invite, 100) || !invite.trim()) throw new HttpError(400, "invite_invalid");
+    const passwordHash = await hashPassword(password);
+    const result = db.registerWithInvite({
+      email: email.trim(),
+      passwordHash,
+      lang: validLang(lang) ? lang || "" : "",
+      invite: invite.trim().toUpperCase(), // codes are created in upper case; accept any case
+    });
+    if (result.error) throw new HttpError(result.error === "email_taken" ? 409 : 400, result.error);
+    startSession(req, res, result.userId);
+    sendJson(res, 201, { user: publicUser(db.userById(result.userId)) });
+  }
+
+  async function login(req, res) {
+    const { email, password } = await readJson(req);
+    if (typeof email !== "string" || typeof password !== "string") throw new HttpError(400, "bad_request");
+    const emailKey = `email:${email.trim().toLowerCase()}`;
+    const ipKey = `ip:${clientAddress(req)}`;
+    if (loginThrottle.blocked(emailKey) || loginThrottle.blocked(ipKey)) throw new HttpError(429, "too_many_attempts");
+    const user = db.userByEmail(email.trim());
+    // Hash even for unknown emails so the response time does not reveal which emails exist.
+    const ok = user ? await verifyPassword(password, user.password_hash) : (await hashPassword(password), false);
+    if (!ok) {
+      loginThrottle.fail(emailKey);
+      loginThrottle.fail(ipKey);
+      throw new HttpError(401, "bad_credentials");
     }
-    const problem = validate(body);
-    if (problem) return sendJson(res, 400, { error: "bad_request", message: problem });
+    loginThrottle.clear(emailKey);
+    startSession(req, res, user.id);
+    sendJson(res, 200, { user: publicUser(user) });
+  }
 
+  function logout(req, res, user) {
+    if (user) db.deleteSession(user.tokenHash);
+    res.setHeader("set-cookie", cookie(req, "", 0));
+    sendJson(res, 200, { ok: true });
+  }
+
+  async function updateMe(req, res, user) {
+    const { role = user.role, lang = user.lang } = await readJson(req);
+    if (!validRole(role) || !validLang(lang)) throw new HttpError(400, "bad_request");
+    db.updateProfile(user.id, { role, lang });
+    sendJson(res, 200, { user: publicUser(db.userById(user.id)) });
+  }
+
+  async function changePassword(req, res, user) {
+    const { current, next } = await readJson(req);
+    if (typeof current !== "string" || !(await verifyPassword(current, user.password_hash))) {
+      throw new HttpError(401, "bad_credentials");
+    }
+    if (!validPassword(next)) throw new HttpError(400, "weak_password");
+    db.updatePassword(user.id, await hashPassword(next));
+    db.deleteOtherSessions(user.id, user.tokenHash); // sign out every other device
+    sendJson(res, 200, { ok: true });
+  }
+
+  async function deleteMe(req, res, user) {
+    const { password } = await readJson(req);
+    if (typeof password !== "string" || !(await verifyPassword(password, user.password_hash))) {
+      throw new HttpError(401, "bad_credentials");
+    }
+    db.deleteUser(user.id); // notes, uploads, progress and sessions go with it
+    res.setHeader("set-cookie", cookie(req, "", 0));
+    sendJson(res, 200, { ok: true });
+  }
+
+  // ----- user data routes -----
+
+  const noteOut = (n) => ({ id: n.id, title: n.title, body: n.body, createdAt: n.created_at, updatedAt: n.updated_at });
+  const docOut = (d) => ({ id: d.id, title: d.title, name: d.name, text: d.text, addedAt: d.added_at });
+
+  async function putNote(req, res, user, id) {
+    const n = await readJson(req, 1024 * KB);
+    if (!isString(n.title, LIMITS.noteTitle) || !isString(n.body, LIMITS.noteBody)) throw new HttpError(400, "bad_request");
+    if (!isTime(n.createdAt) || !isTime(n.updatedAt)) throw new HttpError(400, "bad_request");
+    const isNew = !db.noteExists(user.id, id);
+    if (isNew && db.countNotes(user.id) >= LIMITS.notesPerUser) throw new HttpError(409, "too_many_items");
+    db.upsertNote(user.id, { id, title: n.title, body: n.body, createdAt: n.createdAt, updatedAt: n.updatedAt });
+    sendJson(res, 200, { ok: true });
+  }
+
+  async function putDoc(req, res, user, id) {
+    const d = await readJson(req, 2048 * KB);
+    if (!isString(d.title, LIMITS.docTitle) || !d.title || !isString(d.name ?? "", 255)) throw new HttpError(400, "bad_request");
+    if (!isString(d.text, LIMITS.docText) || !d.text || !isTime(d.addedAt)) throw new HttpError(400, "bad_request");
+    const isNew = !db.docExists(user.id, id);
+    if (isNew && db.countDocs(user.id) >= LIMITS.docsPerUser) throw new HttpError(409, "too_many_items");
+    db.upsertDoc(user.id, { id, title: d.title, name: d.name ?? "", text: d.text, addedAt: d.addedAt });
+    sendJson(res, 200, { ok: true });
+  }
+
+  // ----- AI routes -----
+
+  async function handleModelRequest(req, res, user, { validate, crisisText, messages, mockLines }) {
+    const body = await readJson(req);
+    if (!validate(body)) throw new HttpError(400, "bad_request");
     // Crisis language never reaches the model. The browser shows the fixed safety message.
     if (detectCrisis(crisisText(body), SAFETY.keywords)) return sendJson(res, 200, { type: "crisis" });
-
-    // Behind Cloudflare, cf-connecting-ip is the real visitor and cannot be set by the visitor.
-    const visitor = String(
-      req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.socket.remoteAddress
-    ).split(",")[0].trim();
-    if (!limiter.check(visitor).ok) {
-      return sendJson(res, 429, { error: "limit", message: "今天的使用次数已经用完了，明天再来吧。" });
-    }
-
+    if (!aiLimiter.check(`user:${user.id}`).ok) throw new HttpError(429, "limit");
     if (config.mock) return streamMock(res, mockLines(body));
     return streamModel(res, config.llm, messages(body));
   }
 
-  const handleChat = (req, res) =>
-    handleModelRequest(req, res, {
-      validate: validateChat,
-      crisisText: (b) => b.question,
-      messages: buildMessages,
-      mockLines: mockChatLines,
-    });
+  // ----- routing -----
 
-  const handleAssist = (req, res) =>
-    handleModelRequest(req, res, {
-      validate: validateAssist,
-      crisisText: (b) => b.text,
-      messages: buildAssistMessages,
-      mockLines: mockAssistLines,
-    });
+  const langOf = (url) => (url.searchParams.get("lang") === "en" ? "en" : "zh");
+
+  /** [method, path, handler, needs login]. A path ending in /:id captures one id segment. */
+  const routes = [
+    ["GET", "/api/status", (req, res) => sendJson(res, 200, { mock: config.mock, model: config.mock ? null : config.llm.model }), false],
+    ["POST", "/api/auth/register", register, false],
+    ["POST", "/api/auth/login", login, false],
+    ["POST", "/api/auth/logout", logout, false],
+    ["GET", "/api/me", (req, res, user) => sendJson(res, 200, { user: publicUser(user) }), true],
+    ["PATCH", "/api/me", updateMe, true],
+    ["POST", "/api/me/password", changePassword, true],
+    ["DELETE", "/api/me", deleteMe, true],
+    ["GET", "/api/courses", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "courses"), langOf(url))), true],
+    ["GET", "/api/library", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "library"), langOf(url))), true],
+    ["GET", "/api/notes", (req, res, user) => sendJson(res, 200, db.listNotes(user.id).map(noteOut)), true],
+    ["PUT", "/api/notes/:id", putNote, true],
+    ["DELETE", "/api/notes/:id", (req, res, user, id) => sendJson(res, db.deleteNote(user.id, id) ? 200 : 404, {}), true],
+    ["GET", "/api/docs", (req, res, user) => sendJson(res, 200, db.listDocs(user.id).map(docOut)), true],
+    ["PUT", "/api/docs/:id", putDoc, true],
+    ["DELETE", "/api/docs/:id", (req, res, user, id) => sendJson(res, db.deleteDoc(user.id, id) ? 200 : 404, {}), true],
+    ["GET", "/api/progress", (req, res, user) => sendJson(res, 200, db.listProgress(user.id)), true],
+    ["PUT", "/api/progress/:id", (req, res, user, id) => (db.addProgress(user.id, id), sendJson(res, 200, { ok: true })), true],
+    ["DELETE", "/api/progress/:id", (req, res, user, id) => (db.removeProgress(user.id, id), sendJson(res, 200, { ok: true })), true],
+    ["POST", "/api/chat", (req, res, user) =>
+      handleModelRequest(req, res, user, { validate: validateChat, crisisText: (b) => b.question, messages: buildMessages, mockLines: mockChatLines }), true],
+    ["POST", "/api/assist", (req, res, user) =>
+      handleModelRequest(req, res, user, { validate: validateAssist, crisisText: (b) => b.text, messages: buildAssistMessages, mockLines: mockAssistLines }), true],
+  ];
+
+  function matchRoute(method, pathname) {
+    let pathMatched = false;
+    for (const [m, pattern, handler, auth] of routes) {
+      let id;
+      if (pattern.endsWith("/:id")) {
+        const base = pattern.slice(0, -4);
+        if (!pathname.startsWith(`${base}/`)) continue;
+        try {
+          id = decodeURIComponent(pathname.slice(base.length + 1));
+        } catch {
+          continue;
+        }
+        if (!ID.test(id)) continue;
+      } else if (pathname !== pattern) continue;
+      pathMatched = true;
+      if (m === method) return { handler, auth, id };
+    }
+    return pathMatched ? { methodNotAllowed: true } : null;
+  }
+
+  /** Browsers send Origin with cross-site requests; refuse state changes coming from any other site. */
+  function sameOrigin(req) {
+    const origin = req.headers.origin;
+    if (!origin) return true;
+    try {
+      return new URL(origin).host === req.headers.host;
+    } catch {
+      return false;
+    }
+  }
 
   async function serveStatic(pathname, res) {
     const file = resolve(PUBLIC_DIR, `.${pathname === "/" ? "/index.html" : pathname}`);
     if (!file.startsWith(PUBLIC_DIR + sep)) return sendJson(res, 404, { error: "not_found" });
     try {
       const data = await readFile(file);
-      res.writeHead(200, { "content-type": MIME[extname(file)] || "application/octet-stream" });
+      const headers = { "content-type": MIME[extname(file)] || "application/octet-stream" };
+      // The page and the service worker must always be checked for updates.
+      if (pathname === "/" || pathname.endsWith(".html") || pathname === "/sw.js") headers["cache-control"] = "no-cache";
+      res.writeHead(200, headers);
       res.end(data);
     } catch {
       sendJson(res, 404, { error: "not_found" });
     }
   }
 
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
     try {
-      const { pathname, searchParams } = new URL(req.url, "http://localhost");
-      if (req.method === "GET" && pathname === "/api/status") {
-        return sendJson(res, 200, { mock: config.mock, model: config.mock ? null : config.llm.model });
+      const url = new URL(req.url, "http://localhost");
+      if (url.pathname.startsWith("/api/")) {
+        const route = matchRoute(req.method, url.pathname);
+        if (!route) throw new HttpError(404, "not_found");
+        if (route.methodNotAllowed) throw new HttpError(405, "method_not_allowed");
+        if (req.method !== "GET" && !sameOrigin(req)) throw new HttpError(403, "forbidden_origin");
+        const user = currentUser(req);
+        if (route.auth && !user) throw new HttpError(401, "unauthorized");
+        return await route.handler(req, res, user, route.id, url);
       }
-      const lang = searchParams.get("lang") === "en" ? "en" : "zh";
-      if (req.method === "GET" && pathname === "/api/courses") {
-        return sendJson(res, 200, loadLocalized(join(contentDir, "courses"), lang));
+      if (req.method !== "GET" && req.method !== "HEAD") throw new HttpError(405, "method_not_allowed");
+      let path;
+      try {
+        path = decodeURIComponent(url.pathname);
+      } catch {
+        throw new HttpError(404, "not_found");
       }
-      if (req.method === "GET" && pathname === "/api/library") {
-        return sendJson(res, 200, loadLocalized(join(contentDir, "library"), lang));
-      }
-      if (req.method === "POST" && pathname === "/api/chat") return await handleChat(req, res);
-      if (req.method === "POST" && pathname === "/api/assist") return await handleAssist(req, res);
-      if (req.method === "GET") {
-        let path;
-        try {
-          path = decodeURIComponent(pathname);
-        } catch {
-          return sendJson(res, 404, { error: "not_found" });
-        }
-        return await serveStatic(path, res);
-      }
-      sendJson(res, 405, { error: "method_not_allowed" });
+      return await serveStatic(path, res);
     } catch (err) {
-      console.error(err);
-      if (!res.headersSent) sendJson(res, 500, { error: "server", message: "服务器出错了。" });
+      if (!(err instanceof HttpError)) console.error(err);
+      const status = err instanceof HttpError ? err.status : 500;
+      if (!res.headersSent) sendJson(res, status, { error: err instanceof HttpError ? err.code : "server" });
       else res.end();
     }
   });
+
+  // Expired sessions are cleaned up hourly.
+  const purge = setInterval(() => db.purgeExpiredSessions(), 3600_000);
+  purge.unref();
+  server.on("close", () => {
+    clearInterval(purge);
+    if (!config.db) db.close();
+  });
+  return server;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const config = loadConfig(join(APP_DIR, ".env"));
   createApp(config).listen(config.port, config.host, () => {
-    console.log(`Unspoken demo: http://${config.host}:${config.port}`);
+    console.log(`Unspoken: http://${config.host}:${config.port}`);
     console.log(config.mock ? "Mode: TEST (no AI model called; set LLM_API_KEY in .env)" : `Mode: live, model ${config.llm.model}`);
   });
 }

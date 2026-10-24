@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13"
   },
   "description": "Unspoken (未言) emotional education demo: courses, grounded Q&A, private notebook",
   "license": "MIT",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test test/*.test.js",
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
     "vendor": "node scripts/vendor.js"
   },
   "devDependencies": {
