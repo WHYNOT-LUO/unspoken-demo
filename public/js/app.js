@@ -1,12 +1,12 @@
-import { marked } from "/vendor/marked.esm.js";
-import DOMPurify from "/vendor/purify.es.mjs";
-import { buildIndex, search, isFollowUp } from "/js/retrieval.js";
-import { detectCrisis, visibleHotlines } from "/js/safety.js";
-import * as localStore from "/js/store.js"; // only to import notes saved in the browser before accounts
-import { get, put, post, patch, del, setUnauthorizedHandler } from "/js/api.js";
-import { fileToText, ACCEPT } from "/js/parse.js";
-import { TEMPLATES } from "/js/templates.js";
-import { t, setLang, getLang, detectLang } from "/js/i18n.js";
+import { marked } from "../vendor/marked.esm.js";
+import DOMPurify from "../vendor/purify.es.mjs";
+import { buildIndex, search, isFollowUp } from "./retrieval.js";
+import { detectCrisis, visibleHotlines } from "./safety.js";
+import * as localStore from "./store.js"; // only to import notes saved in the browser before accounts
+import { get, put, post, patch, del, setUnauthorizedHandler } from "./api.js";
+import { fileToText, ACCEPT } from "./parse.js";
+import { TEMPLATES } from "./templates.js";
+import { t, setLang, getLang, detectLang } from "./i18n.js";
 
 // ---------- helpers ----------
 
@@ -763,7 +763,7 @@ function openAssistDialog(task, note) {
   // Same as chat: crisis language is answered here and never leaves the browser.
   if (detectCrisis(text, state.safety.keywords)) return finish(crisisHtml());
 
-  fetch("/api/assist", {
+  fetch("api/assist", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ task, text, role: state.role, lang: getLang() }),
@@ -1038,7 +1038,7 @@ async function ask(question) {
   renderMessages();
 
   try {
-    const res = await fetch("/api/chat", {
+    const res = await fetch("api/chat", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -1131,7 +1131,7 @@ function showHelp() {
 
 function showAbout() {
   const role = ROLES.includes(state.role) ? t(`role.${state.role}`) : t("role.none");
-  const mode = state.status.mock ? t("about.mock") : t("about.live", { m: esc(state.status.model) });
+  const mode = state.status.demo ? t("demo.mode") : state.status.mock ? t("about.mock") : t("about.live", { m: esc(state.status.model) });
   showInfo(
     "about",
     `<h2>${t("about.title")}</h2>
@@ -1335,9 +1335,35 @@ async function logout() {
 
 // ---------- account ----------
 
+function openDemoAccount() {
+  const dlg = openDialog(
+    "account",
+    `<div class="dlg">
+      <h2>${t("account.title")}</h2>
+      <p>${t("demo.accountNote")}</p>
+      <button type="button" class="ghost" data-acc="export">${t("account.exportAll")}</button>
+      <button type="button" class="danger-btn" data-acc="reset">${t("demo.reset")}</button>
+      <menu><button type="button" class="primary" data-acc="close">${t("account.close")}</button></menu>
+    </div>`
+  );
+  dlg.querySelector(".dlg").addEventListener("click", async (e) => {
+    const act = e.target.closest("[data-acc]")?.dataset.acc;
+    if (act === "close") dlg.close();
+    if (act === "export") {
+      downloadText(t("notes.exportName", { date: new Date().toISOString().slice(0, 10) }), state.notes.map(noteMarkdown).join("\n---\n\n"));
+    }
+    if (act === "reset") {
+      await del("/api/me", {});
+      storageRemove("unspoken.demo.welcomed");
+      location.reload();
+    }
+  });
+}
+
 function openAccount() {
   const u = state.user;
   if (!u) return;
+  if (state.status.demo) return openDemoAccount();
   const joined = new Date(u.createdAt).toLocaleDateString(getLang() === "en" ? "en-GB" : "zh-CN", { dateStyle: "long" });
   const dlg = openDialog(
     "account",
@@ -1418,7 +1444,7 @@ function openAccount() {
 // ---------- import what was saved in this browser before accounts ----------
 
 async function offerImport() {
-  if (storageGet("unspoken.importSkip")) return;
+  if (state.status.demo || storageGet("unspoken.importSkip")) return;
   let notes = [];
   let docs = [];
   try {
@@ -1505,7 +1531,7 @@ document.addEventListener("click", (e) => {
 
 // Installable app: the service worker lets the app open offline; data still needs the network.
 if ("serviceWorker" in navigator) {
-  addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
 addEventListener("offline", () => toast(t("pwa.offline"), "error"));
 addEventListener("online", () => {
@@ -1518,16 +1544,24 @@ async function init() {
   applyStaticText();
   setUnauthorizedHandler(() => showAuth("expired"));
   try {
-    const [status, safety] = await Promise.all([getJson("/api/status"), getJson("/config/safety.json")]);
+    const [status, safety] = await Promise.all([getJson("api/status"), getJson("config/safety.json")]);
     Object.assign(state, { status, safety });
   } catch {
     toast(t("err.server"), "error");
   }
   $("#mockBanner").hidden = !state.status.mock;
+  if (state.status.demo) {
+    $("#mockBanner").dataset.i18n = "demo.banner";
+    applyStaticText();
+  }
   try {
     const { user } = await get("/api/me");
     if (user) await enterApp(user);
     else showAuth();
+    if (state.status.demo && !storageGet("unspoken.demo.welcomed")) {
+      storageSet("unspoken.demo.welcomed", "1");
+      renderWelcome();
+    }
   } catch (err) {
     if (err.code === "network") return showOffline();
     showAuth();

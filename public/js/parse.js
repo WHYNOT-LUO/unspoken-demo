@@ -6,6 +6,8 @@ const fail = (code) => Object.assign(new Error(code), { code });
 export const ACCEPT = ".txt,.md,.pdf,.docx";
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 
+const vendor = (file) => new URL(`../vendor/${file}`, import.meta.url).href;
+
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -18,11 +20,11 @@ function loadScript(src) {
 }
 
 async function pdfToText(file) {
-  const pdfjs = await import("/vendor/pdf.min.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.mjs";
+  const pdfjs = await import(vendor("pdf.min.mjs"));
+  pdfjs.GlobalWorkerOptions.workerSrc = vendor("pdf.worker.min.mjs");
   const doc = await pdfjs.getDocument({
     data: await file.arrayBuffer(),
-    cMapUrl: "/vendor/cmaps/",
+    cMapUrl: vendor("cmaps/"),
     cMapPacked: true,
   }).promise;
   const pages = [];
@@ -34,7 +36,7 @@ async function pdfToText(file) {
 }
 
 async function docxToText(file) {
-  await loadScript("/vendor/mammoth.browser.min.js");
+  await loadScript(vendor("mammoth.browser.min.js"));
   const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
   return result.value;
 }

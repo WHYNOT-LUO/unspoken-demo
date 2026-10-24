@@ -4,6 +4,13 @@
 
 It has accounts (invite-only sign-up), keeps each user's notes, uploads and progress on the server, installs on phones like an app, and comes with scripts to run it on your own server with HTTPS.
 
+## Try it
+
+| | Link | What it is |
+|---|---|---|
+| **Demo** | **[whynot-luo.github.io/unspoken-demo](https://whynot-luo.github.io/unspoken-demo/)** | Always on, no sign-up. Everything works except the AI: answers are clearly labelled sample text, and what you write stays in your browser. |
+| **The app** | *Coming soon* | The real app with accounts and real AI answers. Its address and a public invite code will be posted here once the server is live. |
+
 ![Lesson with a cited AI answer](docs/screenshots/lesson-and-answer-en.png)
 
 > **Status: private beta.** Sign-up is by invite only, for a small test group. It is not a substitute for counselling or therapy. The seven lessons and the safety text are drafts written with AI from the project notes. They are marked "草稿 · 待审核 / Draft · pending review" in the app and must be reviewed by a qualified professional before a wider launch.
@@ -14,6 +21,7 @@ It has accounts (invite-only sign-up), keeps each user's notes, uploads and prog
 
 ## Contents
 
+- [Try it](#try-it)
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [How it works](#how-it-works)
@@ -23,6 +31,7 @@ It has accounts (invite-only sign-up), keeps each user's notes, uploads and prog
 - [Administration](#administration)
 - [Configuration](#configuration)
 - [Writing content](#writing-content)
+- [The online demo](#the-online-demo)
 - [API](#api)
 - [Project structure](#project-structure)
 - [Tests](#tests)
@@ -233,6 +242,15 @@ Lesson text in Markdown…
 | `questions` | Suggested questions, separated by a vertical bar, shown at the end of the lesson. |
 | `draft` | `true` shows the "Draft · pending review" badge and notice. Delete the line once a lesson is approved. |
 
+## The online demo
+
+The demo at [whynot-luo.github.io/unspoken-demo](https://whynot-luo.github.io/unspoken-demo/) is the same web app, built by `npm run build:demo` (`scripts/build-demo.js`) into `dist-demo/` with two additions:
+
+- `demo/demo-backend.js`, an in-browser stand-in for the server. It answers the app's `api/…` requests itself: no account, notes and progress kept in the visitor's browser, crisis screening as in the real app, and labelled sample text instead of AI answers.
+- The lessons as JSON files, since there is no server to read them from.
+
+GitHub Actions (`.github/workflows/test-and-demo.yml`) runs the tests on every push and, when they pass on `main`, rebuilds and publishes the demo to GitHub Pages.
+
 ## API
 
 All endpoints return JSON. Everything except `GET /api/status`, `GET /api/me` and the `/api/auth/*` routes needs a signed-in session cookie.
@@ -303,7 +321,10 @@ deploy/                   server setup, update, service, HTTPS and backup files,
 scripts/
   admin.js                invites, users, password resets, deletion, backups
   vendor.js               re-copies vendor files after npm install
+  build-demo.js           builds the static online demo into dist-demo/
 docs/screenshots/         images used in this README
+demo/demo-backend.js      in-browser stand-in for the server, used only by the online demo
+.github/workflows/        tests on every push; publishes the demo to GitHub Pages
 test/                     node:test suites
 start-public-demo.command local server plus a temporary Cloudflare link
 .env.example              configuration template

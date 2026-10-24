@@ -18,7 +18,8 @@ export function setUnauthorizedHandler(fn) {
 export async function api(method, path, body, { keepalive = false } = {}) {
   let res;
   try {
-    res = await fetch(path, {
+    // Callers write "/api/…"; resolving it relative to the page lets the app run from a subfolder too.
+    res = await fetch(path.replace(/^\//, ""), {
       method,
       credentials: "same-origin",
       keepalive,

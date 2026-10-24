@@ -239,6 +239,11 @@ const zh = {
   "pwa.offlineStart": "现在没有网络。连上网络后才能打开你的账户。",
   "pwa.retry": "重试",
 
+  "demo.banner": "演示版：AI 回答是示例文字，不会调用 AI；你写的内容只保存在这个浏览器里。",
+  "demo.accountNote": "这是演示版，不需要账户。你的笔记、资料和学习进度只保存在这个浏览器里。",
+  "demo.reset": "清除演示数据",
+  "demo.mode": "演示版（不调用 AI）",
+
   "err.bad_email": "邮箱格式不正确。",
   "err.weak_password": "密码至少需要 8 个字符。",
   "err.invite_invalid": "邀请码无效或已经用完。",
@@ -488,6 +493,11 @@ const en = {
   "pwa.online": "Back online.",
   "pwa.offlineStart": "You're offline. Unspoken needs a connection to open your account.",
   "pwa.retry": "Try again",
+
+  "demo.banner": "Demo: AI replies are sample text and no AI is called; what you write stays in this browser.",
+  "demo.accountNote": "This is the demo, so there is no account. Your notes, materials and progress are kept only in this browser.",
+  "demo.reset": "Clear demo data",
+  "demo.mode": "Demo (no AI calls)",
 
   "err.bad_email": "That email address doesn't look right.",
   "err.weak_password": "Passwords need at least 8 characters.",
