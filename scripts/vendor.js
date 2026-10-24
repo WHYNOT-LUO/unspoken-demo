@@ -16,6 +16,19 @@ for (const [from, to] of files) {
   console.log(`vendor: ${to}`);
 }
 
+// Each library's licence travels with its copied files.
+const licences = [
+  ["node_modules/marked/LICENSE.md", "marked-LICENSE.md"],
+  ["node_modules/dompurify/LICENSE", "dompurify-LICENSE"],
+  ["node_modules/mammoth/LICENSE", "mammoth-LICENSE"],
+  ["node_modules/pdfjs-dist/LICENSE", "pdfjs-LICENSE"],
+];
+mkdirSync("public/vendor/licenses", { recursive: true });
+for (const [from, to] of licences) {
+  copyFileSync(from, `public/vendor/licenses/${to}`);
+  console.log(`vendor: licenses/${to}`);
+}
+
 // Character maps let pdf.js extract text from Chinese PDFs that use CID fonts.
 cpSync("node_modules/pdfjs-dist/cmaps", "public/vendor/cmaps", { recursive: true });
 console.log("vendor: cmaps/");

@@ -7,6 +7,7 @@
     "node": ">=18"
   },
   "description": "Unspoken (未言) emotional education demo: courses, grounded Q&A, private notebook",
+  "license": "MIT",
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js",

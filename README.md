@@ -233,7 +233,7 @@ public/                   the web app (plain ES modules, no build step)
   js/parse.js             text extraction from PDF, Word, TXT and Markdown
   js/templates.js         note templates in both languages
   config/safety.json      crisis message, disclaimer, hotlines, keywords (drafts)
-  vendor/                 marked, DOMPurify, mammoth, pdf.js (copied locally, no CDN)
+  vendor/                 marked, DOMPurify, mammoth, pdf.js (copied locally, no CDN) and their licences
 content/
   courses/                Chinese lessons (drafts) and a format guide
   courses/en/             English lessons (drafts)
@@ -243,6 +243,7 @@ scripts/vendor.js         re-copies vendor files after npm install
 test/                     node:test suites
 start-public-demo.command server plus Cloudflare tunnel launcher
 .env.example              configuration template
+LICENSE                   MIT licence
 ```
 
 Vendor files are committed so the app runs without a CDN, since CDNs are unreliable from mainland China. To update them, run `npm install`, then `npm run vendor`.
@@ -274,6 +275,6 @@ npm test
 
 ## Credits and licence
 
-Built by [WHYNOT-LUO](https://github.com/WHYNOT-LUO) with AI coding assistance. The app uses [marked](https://github.com/markedjs/marked) (MIT), [DOMPurify](https://github.com/cure53/DOMPurify) (MPL-2.0 or Apache-2.0), [mammoth.js](https://github.com/mwilliamson/mammoth.js) (BSD-2-Clause) and [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0).
+Built by [WHYNOT-LUO](https://github.com/WHYNOT-LUO) with AI coding assistance.
 
-No licence has been chosen for this project yet.
+Released under the [MIT License](LICENSE). This covers the code and the draft lessons. The bundled libraries in `public/vendor/` keep their own licences, copied in `public/vendor/licenses/`: [marked](https://github.com/markedjs/marked) (MIT), [DOMPurify](https://github.com/cure53/DOMPurify) (MPL-2.0 or Apache-2.0), [mammoth.js](https://github.com/mwilliamson/mammoth.js) (BSD-2-Clause) and [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0).
