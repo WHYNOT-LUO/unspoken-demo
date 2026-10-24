@@ -1,0 +1,2 @@
+# Nightly database backup at 03:30 server time; backups older than 14 days are deleted.
+30 3 * * * unspoken cd /opt/unspoken/app && /usr/bin/node --disable-warning=ExperimentalWarning scripts/admin.js backup /var/backups/unspoken/unspoken-$(date +\%F).db >/dev/null && find /var/backups/unspoken -name 'unspoken-*.db' -mtime +14 -delete

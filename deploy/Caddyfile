@@ -1,0 +1,10 @@
+# Caddy gets and renews the HTTPS certificate for YOUR_DOMAIN automatically.
+YOUR_DOMAIN {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	# Caddy sends X-Forwarded-Proto: https, so the app marks the session cookie Secure.
+	reverse_proxy 127.0.0.1:3100 {
+		# Only Cloudflare may set this header; drop any copy sent by a visitor.
+		header_up -Cf-Connecting-Ip
+	}
+}

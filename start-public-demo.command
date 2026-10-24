@@ -12,7 +12,7 @@ if [ ! -x ./bin/cloudflared ]; then
 fi
 
 if ! lsof -ti tcp:3100 -sTCP:LISTEN >/dev/null; then
-  node server.js &
+  node --disable-warning=ExperimentalWarning server.js &
   SERVER_PID=$!
   sleep 1
 fi
