@@ -1,4 +1,5 @@
 // Guided writing templates for new notes. `audience`: parent | student | all.
+// Bodies are plain prompts (no Markdown symbols) so they read naturally while typing.
 
 export const TEMPLATES = [
   {
@@ -7,12 +8,12 @@ export const TEMPLATES = [
     zh: {
       title: "今天的情绪记录",
       desc: "把一件小事和当时的感受写下来",
-      body: "## 发生了什么\n\n## 我当时的感受（试着给它起个名字）\n\n## 身体有什么反应\n\n## 我当时做了什么\n\n## 下次我可能会……\n",
+      body: "发生了什么：\n\n\n我当时的感受（试着给它起个名字）：\n\n\n身体有什么反应：\n\n\n我当时做了什么：\n\n\n下次我可能会……\n\n",
     },
     en: {
       title: "Today's feelings log",
       desc: "Write down one small event and how you felt",
-      body: "## What happened\n\n## How I felt (try to give it a name)\n\n## What my body did\n\n## What I did then\n\n## Next time I might...\n",
+      body: "What happened:\n\n\nHow I felt (try to give it a name):\n\n\nWhat my body did:\n\n\nWhat I did then:\n\n\nNext time I might...\n\n",
     },
   },
   {
@@ -21,12 +22,12 @@ export const TEMPLATES = [
     zh: {
       title: "一次冲突的回顾",
       desc: "吵完架以后，慢慢理一理",
-      body: "## 起因是什么\n\n## 我说了什么，对方说了什么\n\n## 我真正想表达的是\n\n## 对方可能真正想表达的是\n\n## 如果重来一次，我想怎么说\n",
+      body: "起因是什么：\n\n\n我说了什么，对方说了什么：\n\n\n我真正想表达的是：\n\n\n对方可能真正想表达的是：\n\n\n如果重来一次，我想怎么说：\n\n",
     },
     en: {
       title: "Looking back on an argument",
       desc: "After a fight, sort through it slowly",
-      body: "## How it started\n\n## What I said, and what they said\n\n## What I really wanted to say\n\n## What they may really have wanted to say\n\n## If I could do it again, I would say\n",
+      body: "How it started:\n\n\nWhat I said, and what they said:\n\n\nWhat I really wanted to say:\n\n\nWhat they may really have wanted to say:\n\n\nIf I could do it again, I would say:\n\n",
     },
   },
   {
@@ -63,12 +64,12 @@ export const TEMPLATES = [
     zh: {
       title: "我希望听到的话",
       desc: "那些你一直希望有人对你说的话",
-      body: "## 我多希望有人对我说\n\n## 当时我需要的其实是\n\n## 现在，我可以对自己说\n",
+      body: "我多希望有人对我说：\n\n\n当时我需要的其实是：\n\n\n现在，我可以对自己说：\n\n",
     },
     en: {
       title: "Words I wish I'd heard",
       desc: "The things you always wished someone would say to you",
-      body: "## I really wish someone had told me\n\n## What I actually needed then was\n\n## Now I can tell myself\n",
+      body: "I really wish someone had told me:\n\n\nWhat I actually needed then was:\n\n\nNow I can tell myself:\n\n",
     },
   },
   {
@@ -77,12 +78,12 @@ export const TEMPLATES = [
     zh: {
       title: "课程学习笔记",
       desc: "记下学到的和想到的",
-      body: "## 我学到了什么\n\n## 让我想到了自己的哪段经历\n\n## 我还不明白的问题\n",
+      body: "我学到了什么：\n\n\n让我想到了自己的哪段经历：\n\n\n我还不明白的问题：\n\n",
     },
     en: {
       title: "Lesson notes",
       desc: "What you learned and what it made you think of",
-      body: "## What I learned\n\n## What it reminded me of in my own life\n\n## Questions I still have\n",
+      body: "What I learned:\n\n\nWhat it reminded me of in my own life:\n\n\nQuestions I still have:\n\n",
     },
   },
 ];

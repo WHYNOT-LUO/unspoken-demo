@@ -389,37 +389,78 @@ body[data-auth="pending"] .app, body[data-auth="pending"] .topbar { display: non
 }
 
 @media (max-width: 860px) {
+  /* Phone: top bar, content and bottom tab bar fill the screen exactly; only the content scrolls.
+     No fixed pixel heights, so notches and home indicators (safe areas) are handled. */
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+  body[data-auth="out"], body[data-auth="pending"] { display: block; height: auto; overflow: visible; }
   .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
-    padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: none;
+    padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top));
     background: var(--bg); border-bottom: 1px solid var(--line);
   }
   .topbar .brand-mark { font-size: 20px; }
-  .help-chip { background: var(--danger-soft); color: var(--danger); border: 0; border-radius: 999px; padding: 4px 12px; font-size: 13px; }
-  .app { flex-direction: column; height: auto; min-height: calc(100dvh - 53px); padding-bottom: 72px; }
+  .topbar-actions { gap: 6px; }
+  .lang-btn, .help-chip { min-height: 36px; padding: 0 12px; display: inline-flex; align-items: center; }
+  .help-chip { background: var(--danger-soft); color: var(--danger); border: 0; border-radius: 999px; font-size: 13px; }
+  .app { flex: 1; min-height: 0; flex-direction: column; height: auto; }
 
   .rail {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-    width: auto; flex-direction: row; justify-content: space-around;
-    padding: 6px 4px; padding-bottom: max(6px, env(safe-area-inset-bottom));
+    order: 2; flex: none; width: auto; flex-direction: row; justify-content: space-around; gap: 0;
+    padding: 4px 4px max(4px, env(safe-area-inset-bottom));
     border-right: 0; border-top: 1px solid var(--line); background: var(--surface);
   }
   .brand, .rail-foot { display: none; }
-  .nav-item { flex-direction: column; gap: 2px; padding: 6px 4px; font-size: 11px; flex: 1; align-items: center; text-align: center; }
+  .nav-item { flex-direction: column; justify-content: center; gap: 2px; padding: 6px 4px; min-height: 52px; font-size: 11px; flex: 1; align-items: center; text-align: center; }
   .nav-chat { display: flex; }
 
-  .main { overflow: visible; }
-  .view { padding: 20px 16px 32px; }
+  .main { flex: 1; min-height: 0; overflow-y: auto; }
+  .view { padding: 16px 12px 28px; }
   .view-head h1 { font-size: 21px; }
+  .reader { padding: 18px 16px; }
+  .reader h1 { font-size: 22px; }
+  .reader .prose { font-size: 16px; }
 
-  .chat { display: none; width: auto; border-left: 0; height: calc(100dvh - 53px - 64px); }
+  /* Chat is its own tab; a compact header leaves the space for the conversation. */
+  .chat { display: none; flex: 1; min-height: 0; width: auto; border-left: 0; }
   body[data-view="chat"] .chat { display: flex; }
   body[data-view="chat"] .main { display: none; }
+  .chat-head { padding: 10px 14px 6px; }
+  .chat-head h2 { font-size: 16px; }
+  .mock-banner, .plan-line { margin: 0 14px 6px; padding: 5px 10px; font-size: 12px; }
+  .scope { padding: 0 14px 8px; }
+  .messages { padding: 12px 14px; }
+  .composer { padding: 8px 12px; }
+  .fineprint { display: none; } /* the same notice is shown at sign-up and under About */
 
+  /* Bigger tap targets */
+  .small { min-height: 36px; }
+  .tabs button { min-height: 34px; padding: 4px 14px; }
+  .role-switch .tabs button { min-height: 36px; }
+  .src summary { min-height: 40px; align-items: center; }
+  .plan-line .linklike { padding: 8px 4px; }
+  .chip { min-height: 40px; }
+  input[type="checkbox"] { width: 20px; height: 20px; flex: none; }
+
+  /* Dialogs: narrower padding; buttons wrap onto a new row instead of squeezing their text. */
+  .dlg { padding: 18px 16px; }
+  .dlg menu { flex-wrap: wrap; }
+  .dlg menu button { white-space: nowrap; flex: 1 1 auto; min-height: 40px; }
+
+  /* 16px text in fields stops iPhone Safari from zooming in while typing. */
+  input, textarea, select, .composer textarea, .dlg input, .dlg select,
+  .auth-form input[type="email"], .auth-form input[type="password"], .auth-form input[type="text"] { font-size: 16px; }
+
+  /* Notebook */
   .notes { grid-template-columns: 1fr; }
   .notes[data-mode="edit"] .notes-list { display: none; }
   .notes[data-mode="list"] .note-editor { display: none; }
+  .note-editor { padding: 14px; min-height: 0; }
   .note-editor .back { display: inline; }
-  .reader .prose { font-size: 16px; }
+  .note-tools { row-gap: 8px; }
+  .save-state { order: 10; flex-basis: 100%; margin-left: 0; text-align: right; }
+  .note-body, .note-preview { min-height: 50vh; font-size: 16px; }
+
+  /* The AI writing menu opens as a panel above the tab bar, not beside its button. */
+  .assist-menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(72px + env(safe-area-inset-bottom)); width: auto; z-index: 30; }
+  .assist-menu button { min-height: 44px; font-size: 16px; }
 }
