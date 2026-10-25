@@ -1,8 +1,10 @@
-// Service worker: lets the app open without a network connection.
-// Network first, so users always get the latest version when online; the saved copy is only a fallback.
+// Service worker: makes repeat visits fast and lets the app open without a network connection.
+// App files are served from the saved copy at once and refreshed in the background
+// ("stale while revalidate"), so a new version shows up on the next visit.
 // Account data and AI answers (api/) are never cached.
 // Paths are relative to this file, so the app works at a site root or in a subfolder (GitHub Pages demo).
-const CACHE = "unspoken-v2";
+// Change CACHE when releasing a new version: the new worker then saves fresh copies of everything.
+const CACHE = "unspoken-v3";
 const SCOPE = new URL("./", self.location).href;
 const API_PREFIX = new URL("api/", SCOPE).pathname;
 const APP_SHELL = [
@@ -42,21 +44,23 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith(API_PREFIX)) return;
 
+  // Any page address is the app itself.
+  const key = request.mode === "navigate" ? SCOPE : request;
+
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(request);
-        if (cached) return cached;
-        // Any page address falls back to the app itself.
-        if (request.mode === "navigate") return caches.match(SCOPE);
-        return Response.error();
-      })
+    caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(key);
+      const refresh = fetch(request)
+        .then((response) => {
+          if (response.ok) cache.put(key, response.clone());
+          return response;
+        })
+        .catch(() => undefined);
+      if (cached) {
+        event.waitUntil(refresh); // update the saved copy for next time
+        return cached;
+      }
+      return (await refresh) || Response.error();
+    })
   );
 });

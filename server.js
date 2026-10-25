@@ -1,7 +1,9 @@
 // Unspoken server: static app, accounts, per-user data, course content, and the AI model proxy.
 // The API key stays on the server; the browser never sees it.
 import http from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import { brotliCompressSync, gzipSync, constants as zlib } from "node:zlib";
+import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { join, extname, resolve, sep, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -71,9 +73,54 @@ class HttpError extends Error {
   }
 }
 
-function sendJson(res, status, data) {
-  res.writeHead(status, { "content-type": MIME[".json"], "cache-control": "no-store" });
-  res.end(JSON.stringify(data));
+// ---------- compression and caching ----------
+
+const COMPRESSIBLE = new Set([".html", ".js", ".mjs", ".css", ".json", ".webmanifest", ".svg"]);
+
+/** The best encoding this request accepts: "br", "gzip" or "". */
+function encodingFor(req) {
+  const accepted = String(req?.headers["accept-encoding"] || "");
+  return /\bbr\b/.test(accepted) ? "br" : /\bgzip\b/.test(accepted) ? "gzip" : "";
+}
+
+function compress(buffer, encoding) {
+  if (encoding === "br") return brotliCompressSync(buffer, { params: { [zlib.BROTLI_PARAM_QUALITY]: 5 } });
+  if (encoding === "gzip") return gzipSync(buffer, { level: 6 });
+  return buffer;
+}
+
+const etagOf = (buffer) => `"${createHash("sha1").update(buffer).digest("base64url").slice(0, 20)}"`;
+
+/**
+ * Sends a body with an ETag (answering 304 when the browser already has it) and compression
+ * for text larger than 1 KB. `compressed` caches compressed copies for files that do not change.
+ */
+function sendBody(req, res, status, headers, body, { etag, compressed } = {}) {
+  const head = { ...headers, vary: "accept-encoding" };
+  if (etag) {
+    head.etag = etag;
+    if (req.headers["if-none-match"] === etag) {
+      res.writeHead(304, head);
+      return res.end();
+    }
+  }
+  const encoding = body.length > 1024 && headers.compressible ? encodingFor(req) : "";
+  delete head.compressible;
+  let out = body;
+  if (encoding) {
+    const key = `${etag}:${encoding}`;
+    out = compressed?.get(key) ?? compress(body, encoding);
+    compressed?.set(key, out);
+    head["content-encoding"] = encoding;
+  }
+  res.writeHead(status, head);
+  res.end(out);
+}
+
+function sendJson(res, status, data, { etag = false } = {}) {
+  const body = Buffer.from(JSON.stringify(data));
+  const headers = { "content-type": MIME[".json"], "cache-control": etag ? "no-cache" : "no-store", compressible: true };
+  sendBody(res.req, res, status, headers, body, { etag: etag ? etagOf(body) : undefined });
 }
 
 function readBody(req, maxBytes) {
@@ -434,8 +481,9 @@ export function createApp(config) {
     ["PATCH", "/api/me", updateMe, true],
     ["POST", "/api/me/password", changePassword, true],
     ["DELETE", "/api/me", deleteMe, true],
-    ["GET", "/api/courses", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "courses"), langOf(url))), true],
-    ["GET", "/api/library", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "library"), langOf(url))), true],
+    // Lessons and references are the same for everyone: the browser revalidates them with an ETag.
+    ["GET", "/api/courses", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "courses"), langOf(url)), { etag: true }), true],
+    ["GET", "/api/library", (req, res, user, id, url) => sendJson(res, 200, loadLocalized(join(contentDir, "library"), langOf(url)), { etag: true }), true],
     ["GET", "/api/notes", (req, res, user) => sendJson(res, 200, db.listNotes(user.id).map(noteOut)), true],
     ["PUT", "/api/notes/:id", putNote, true],
     ["DELETE", "/api/notes/:id", (req, res, user, id) => sendJson(res, db.deleteNote(user.id, id) ? 200 : 404, {}), true],
@@ -482,19 +530,35 @@ export function createApp(config) {
     }
   }
 
-  async function serveStatic(pathname, res) {
+  // Static files are read once and kept in memory (with their ETag and compressed copies)
+  // until they change on disk.
+  const fileCache = new Map();
+  const compressedFiles = new Map();
+
+  async function loadStatic(file) {
+    const info = await stat(file);
+    if (!info.isFile()) throw new Error("not a file");
+    const cached = fileCache.get(file);
+    if (cached && cached.mtimeMs === info.mtimeMs && cached.size === info.size) return cached;
+    const data = await readFile(file);
+    const entry = { data, etag: etagOf(data), mtimeMs: info.mtimeMs, size: info.size };
+    fileCache.set(file, entry);
+    return entry;
+  }
+
+  async function serveStatic(pathname, req, res) {
     const file = resolve(PUBLIC_DIR, `.${pathname === "/" ? "/index.html" : pathname}`);
     if (!file.startsWith(PUBLIC_DIR + sep)) return sendJson(res, 404, { error: "not_found" });
+    let entry;
     try {
-      const data = await readFile(file);
-      const headers = { "content-type": MIME[extname(file)] || "application/octet-stream" };
-      // The page and the service worker must always be checked for updates.
-      if (pathname === "/" || pathname.endsWith(".html") || pathname === "/sw.js") headers["cache-control"] = "no-cache";
-      res.writeHead(200, headers);
-      res.end(data);
+      entry = await loadStatic(file);
     } catch {
-      sendJson(res, 404, { error: "not_found" });
+      return sendJson(res, 404, { error: "not_found" });
     }
+    const ext = extname(file);
+    // Browsers always check with the server (cheap thanks to the ETag), so updates show up at once.
+    const headers = { "content-type": MIME[ext] || "application/octet-stream", "cache-control": "no-cache", compressible: COMPRESSIBLE.has(ext) };
+    sendBody(req, res, 200, headers, entry.data, { etag: entry.etag, compressed: compressedFiles });
   }
 
   const server = http.createServer(async (req, res) => {
@@ -517,7 +581,7 @@ export function createApp(config) {
       } catch {
         throw new HttpError(404, "not_found");
       }
-      return await serveStatic(path, res);
+      return await serveStatic(path, req, res);
     } catch (err) {
       if (!(err instanceof HttpError)) console.error(err);
       const status = err instanceof HttpError ? err.status : 500;

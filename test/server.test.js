@@ -48,6 +48,35 @@ test("unknown API paths and wrong methods", async () => {
   assert.equal((await app.call("/api/notes", { method: "POST", cookie, body: {} })).status, 405);
 });
 
+test("text files are compressed and revalidated with an ETag", async () => {
+  const first = await app.call("/js/app.js", { headers: { "accept-encoding": "br, gzip" } });
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get("content-encoding"), "br");
+  const etag = first.headers.get("etag");
+  assert.ok(etag);
+  assert.match(await first.text(), /function renderCourses/); // fetch decompresses it again
+  const again = await app.call("/js/app.js", { headers: { "if-none-match": etag } });
+  assert.equal(again.status, 304);
+  const gz = await app.call("/css/app.css", { headers: { "accept-encoding": "gzip" } });
+  assert.equal(gz.headers.get("content-encoding"), "gzip");
+});
+
+test("images are not compressed again", async () => {
+  const res = await app.call("/icons/icon-512.png", { headers: { "accept-encoding": "br, gzip" } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-encoding"), null);
+});
+
+test("lessons are revalidated with an ETag; personal data is never cached", async () => {
+  const first = await app.call("/api/courses", { cookie });
+  const etag = first.headers.get("etag");
+  assert.ok(etag);
+  assert.equal((await app.call("/api/courses", { cookie, headers: { "if-none-match": etag } })).status, 304);
+  const notes = await app.call("/api/notes", { cookie });
+  assert.equal(notes.headers.get("cache-control"), "no-store");
+  assert.equal(notes.headers.get("etag"), null);
+});
+
 test("responses carry security headers", async () => {
   const res = await app.call("/");
   assert.equal(res.headers.get("x-content-type-options"), "nosniff");

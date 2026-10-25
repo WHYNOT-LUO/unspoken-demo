@@ -1616,6 +1616,11 @@ async function init() {
   setLang(detectLang(storageGet("unspoken.lang"), navigator.languages || [navigator.language]));
   applyStaticText();
   setUnauthorizedHandler(() => showAuth("expired"));
+  // Ask "who am I?" at the same time as the status, instead of one after the other.
+  const meRequest = get("/api/me").then(
+    (data) => ({ data }),
+    (err) => ({ err })
+  );
   try {
     const [status, safety] = await Promise.all([getJson("api/status"), getJson("config/safety.json")]);
     Object.assign(state, { status, safety });
@@ -1628,7 +1633,9 @@ async function init() {
     applyStaticText();
   }
   try {
-    const { user } = await get("/api/me");
+    const { data, err } = await meRequest;
+    if (err) throw err;
+    const { user } = data;
     if (user) await enterApp(user);
     else showAuth();
     if (state.status.demo && !storageGet("unspoken.demo.welcomed")) {
