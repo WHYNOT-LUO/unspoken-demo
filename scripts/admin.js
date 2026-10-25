@@ -2,6 +2,8 @@
 //   node scripts/admin.js invite [uses] [note]   create an invite code (default: 1 use)
 //   node scripts/admin.js invites                list invite codes
 //   node scripts/admin.js users                  list accounts
+//   node scripts/admin.js grant EMAIL [days]     unlock the paid plan (default: PLAN_DAYS, 30); extends an active plan
+//   node scripts/admin.js revoke EMAIL           end the paid plan now
 //   node scripts/admin.js reset-password EMAIL   set a temporary password and sign the user out everywhere
 //   node scripts/admin.js delete-user EMAIL      delete an account and all its data
 //   node scripts/admin.js backup FILE            copy the database to FILE while the app runs
@@ -49,8 +51,27 @@ switch (command) {
     for (const i of db.listInvites()) console.log(`${i.code}  uses left: ${i.uses_left}  ${date(i.created_at)}  ${i.note}`);
     break;
   case "users":
-    for (const u of db.listUsers()) console.log(`${u.email}  joined ${date(u.created_at)}  notes: ${u.notes}  materials: ${u.docs}`);
+    for (const u of db.listUsers()) {
+      const plan = u.plan_until > Date.now() ? `paid until ${date(u.plan_until)}` : `free AI uses: ${u.free_ai_used}/${config.billing.freeUses}`;
+      console.log(`${u.email}  joined ${date(u.created_at)}  ${plan}  notes: ${u.notes}  materials: ${u.docs}`);
+    }
     break;
+  case "grant": {
+    const user = userOrExit(need(args[0], "grant EMAIL [days]"));
+    const days = Number(args[1] || config.billing.planDays);
+    if (!Number.isInteger(days) || days < 1) need(null, "grant EMAIL [days]");
+    const from = Math.max(Date.now(), user.plan_until); // paying again extends the current plan
+    const until = from + days * 86400_000;
+    db.setPlanUntil(user.id, until);
+    console.log(`${user.email}: paid plan until ${date(until)} (${days} days added)`);
+    break;
+  }
+  case "revoke": {
+    const user = userOrExit(need(args[0], "revoke EMAIL"));
+    db.setPlanUntil(user.id, 0);
+    console.log(`${user.email}: paid plan ended`);
+    break;
+  }
   case "reset-password": {
     const user = userOrExit(need(args[0], "reset-password EMAIL"));
     const temporary = randomCode(9);
@@ -76,7 +97,9 @@ switch (command) {
     console.log(`Commands:
   invite [uses] [note]   create an invite code (default: 1 use)
   invites                list invite codes
-  users                  list accounts
+  users                  list accounts with plan status
+  grant EMAIL [days]     unlock the paid plan (default 30 days); extends an active plan
+  revoke EMAIL           end the paid plan now
   reset-password EMAIL   set a temporary password and sign the user out everywhere
   delete-user EMAIL      delete an account and all its data
   backup FILE            copy the database to FILE while the app runs`);

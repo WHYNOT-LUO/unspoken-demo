@@ -16,7 +16,9 @@ const chat = (body, c = cookie) => app.call("/api/chat", { method: "POST", cooki
 const assist = (body) => app.call("/api/assist", { method: "POST", cookie, body });
 
 test("status is public and reports test mode", async () => {
-  assert.deepEqual(await (await app.call("/api/status")).json(), { mock: true, model: null });
+  const status = await (await app.call("/api/status")).json();
+  assert.equal(status.mock, true);
+  assert.equal(status.model, null);
 });
 
 test("courses come from the content folder, in Chinese or English", async () => {

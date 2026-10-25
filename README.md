@@ -2,18 +2,18 @@
 
 **A bilingual (Chinese / English) emotional-education web app for parents and teenagers.** Users read short lessons, ask an AI tutor that answers only from the course material and cites its sources, and keep private notes with AI writing help. Messages showing signs of self-harm or abuse are never sent to the AI; the app shows emergency contacts instead.
 
-It has accounts (invite-only sign-up), keeps each user's notes, uploads and progress on the server, installs on phones like an app, and comes with scripts to run it on your own server with HTTPS.
+It has accounts, keeps each user's notes, uploads and progress on the server, installs on phones like an app, and comes with scripts to run it on your own server with HTTPS. AI use starts with a free trial (3 uses, short answers); after that, a paid monthly membership unlocks it.
 
 ## Try it
 
 | | Link | What it is |
 |---|---|---|
 | **Demo** | **[whynot-luo.github.io/unspoken-demo](https://whynot-luo.github.io/unspoken-demo/)** | Always on, no sign-up. Everything works except the AI: answers are clearly labelled sample text, and what you write stays in your browser. |
-| **The app** | *Coming soon* | The real app with accounts and real AI answers. Its address and a public invite code will be posted here once the server is live. |
+| **The app** | *Coming soon* | The real app with accounts and real AI answers: a free trial of 3 AI uses, then a paid membership. Its address and a public invite code will be posted here once the server is live. |
 
 ![Lesson with a cited AI answer](docs/screenshots/lesson-and-answer-en.png)
 
-> **Status: private beta.** Sign-up is by invite only, for a small test group. It is not a substitute for counselling or therapy. The seven lessons and the safety text are drafts written with AI from the project notes. They are marked "草稿 · 待审核 / Draft · pending review" in the app and must be reviewed by a qualified professional before a wider launch.
+> **Status: beta.** Sign-up is by invite code, with a free AI trial and a paid membership (payments are confirmed by hand for now). It is not a substitute for counselling or therapy. The seven lessons and the safety text are drafts written with AI from the project notes. They are marked "草稿 · 待审核 / Draft · pending review" in the app and must be reviewed by a qualified professional before a wider launch.
 
 **中文简介：** 未言是一个面向家长和学生的情绪教育网站，支持中文和英文。用户注册账户后可以阅读课程，向只根据课程资料回答、并标注来源的 AI 提问，还可以在笔记本里记录想法、用 AI 帮忙改写；笔记、资料和学习进度保存在自己的账户里，手机上可以“添加到主屏幕”像 App 一样使用。如果用户写下伤害自己或被伤害的内容，这条消息不会发给 AI，而是直接显示求助信息。目前凭邀请码注册，课程和安全文案都是草稿，扩大使用前需要专业人士审核。
 
@@ -62,6 +62,11 @@ All screenshots are from the running app; the AI answers are real responses from
 - Account settings: change password (signs out other devices), export all notes, delete the account and all its data, log out.
 - On first login, anything saved in the browser by an earlier version can be imported into the account.
 
+**Free trial and membership**
+- Every account gets 3 free AI uses (questions and AI writing help together), with short answers. A counter in the chat panel shows what's left.
+- After that, an upgrade screen shows the price, a payment QR code and who to contact. Once the payment is confirmed, the admin unlocks 30 days with one command; paying again extends the membership.
+- Members get fuller answers, up to the daily limit (default 60 a day). Crisis messages, invalid requests and failed model calls never use up the trial.
+
 **Courses**
 - Seven short lessons in Chinese and English: what emotional education is, naming feelings, money and guilt, patterns passed down through generations, talking with your child, dating early, and protecting yourself in a relationship.
 - After sign-up users choose "parent", "student" or "just looking"; lessons for their role are recommended first.
@@ -103,9 +108,11 @@ flowchart TD
   R -- top passages --> S[Server: signed in?]
   S --> C2{Crisis words?<br/>checked again}
   C2 -- yes --> H
-  C2 -- no --> L{Daily limit<br/>for this account?}
-  L -- reached --> E[Friendly limit message]
-  L -- ok --> M[DeepSeek or another<br/>OpenAI-compatible model]
+  C2 -- no --> P{Member, or free<br/>trial use left?}
+  P -- no --> UP[Upgrade screen]
+  P -- yes --> L{Daily limit<br/>reached?}
+  L -- yes --> E[Friendly limit message]
+  L -- no --> M[DeepSeek or another<br/>OpenAI-compatible model]
   M -- streamed answer with citations --> U
 ```
 
@@ -126,7 +133,7 @@ flowchart TD
 | **Sessions** | Random tokens, stored on the server only as SHA-256 hashes, in an `HttpOnly`, `SameSite=Lax` cookie (also `Secure` behind HTTPS), valid for 30 days. Changing the password signs out other devices. |
 | **Login** | 8 failed attempts within 15 minutes, per email or per client address, block further tries for that window. Unknown emails take as long as wrong passwords, so the response does not reveal which emails have accounts. |
 | **Cross-site requests** | Any state-changing request whose `Origin` is another site is refused. |
-| **Cost control** | Daily AI limits per account and for the whole site (defaults: 60 and 1,500), reset at midnight China time. |
+| **Cost control** | Free accounts get 3 AI uses in total, each capped at 250 tokens with an instruction to keep it short. Members are limited per day (default 60), and the whole site per day (default 1,500), reset at midnight China time. |
 | **Browser hardening** | All Markdown is sanitised with DOMPurify. Every response carries a Content-Security-Policy (same-origin scripts only, no inline scripts, no framing), `nosniff` and `no-referrer`. Static files cannot be read outside `public/`. |
 
 The crisis message, disclaimer and keyword list are **drafts** and need review by a qualified person. The server reads `safety.json` when it starts, so restart it after editing.
@@ -183,7 +190,9 @@ The deploy scripts have been checked but not yet run on a real server.
 |---|---|
 | `invite [uses] [note]` | Create an invite code (default: one use). Codes are not case-sensitive. |
 | `invites` | List invite codes and uses left. |
-| `users` | List accounts with note and material counts. |
+| `users` | List accounts with plan status (free uses spent, or paid until), and note and material counts. |
+| `grant EMAIL [days]` | Unlock the paid membership after payment (default 30 days). Granting again extends an active membership. |
+| `revoke EMAIL` | End a membership now. |
 | `reset-password EMAIL` | Set a temporary password and sign the user out everywhere. There is no email-based reset yet. |
 | `delete-user EMAIL` | Delete an account and all its data. |
 | `backup FILE` | Copy the database to `FILE` while the app keeps running. |
@@ -199,13 +208,20 @@ Set these in `.env` (next to `server.js`) or as environment variables. Environme
 | `LLM_MODEL` | `deepseek-chat` | Model name. |
 | `LLM_MAX_TOKENS` | `800` | Longest reply, in tokens. |
 | `LLM_MOCK` | *(off)* | Set to `1` to force test mode even with a key. |
-| `LIMIT_PER_VISITOR_DAY` | `60` | AI requests per account per day. |
+| `FREE_AI_USES` | `3` | Free AI uses per account (questions and AI writing help together). |
+| `FREE_MAX_TOKENS` | `250` | Longest free answer, in tokens. |
+| `PLAN_DAYS` | `30` | Days added by `admin.js grant`. |
+| `PLAN_PRICE` | *(empty)* | Price shown on the upgrade screen, e.g. `¥19 / 30 天`. |
+| `PAY_CONTACT` | *(empty)* | Where users send their account email after paying, e.g. `微信 your-id`. |
+| `LIMIT_PER_VISITOR_DAY` | `60` | AI requests per member per day. |
 | `LIMIT_SITE_DAY` | `1500` | AI requests for the whole site per day. |
 | `DATA_DIR` | `data` | Folder for the database (`unspoken.db`). |
 | `SECURE_COOKIES` | *(off)* | Set to `1` to always mark the session cookie `Secure`. Behind a proxy that sends `X-Forwarded-Proto: https` (such as Caddy) this happens automatically. |
 | `HOST` | `127.0.0.1` | Address to listen on. |
 | `PORT` | `3100` | Port. |
 | `CONTENT_DIR` | `content` | Folder holding `courses/` and `library/`. |
+
+To show a payment QR code on the upgrade screen, save it as `pay-qr.png` in the `DATA_DIR` folder. Without a QR code or contact, the upgrade screen tells users to ask the person who invited them.
 
 ## Writing content
 
@@ -257,11 +273,12 @@ All endpoints return JSON. Everything except `GET /api/status`, `GET /api/me` an
 
 | Method and path | Purpose |
 |---|---|
-| `GET /api/status` | `{ "mock": true/false, "model": name or null }` |
+| `GET /api/status` | `{ mock, model, plan: { freeUses, days, dailyLimit, price, contact, qr } }` |
+| `GET /api/pay/qr` | The payment QR image, if `pay-qr.png` exists in the data folder. |
 | `POST /api/auth/register` | `{ email, password, invite, lang? }` → `201 { user }` and a session cookie |
 | `POST /api/auth/login` | `{ email, password }` → `{ user }` and a session cookie |
 | `POST /api/auth/logout` | Ends the session. |
-| `GET /api/me` | `{ user }`, or `{ "user": null }` when signed out |
+| `GET /api/me` | `{ user }` (with `plan: { paidUntil, freeLeft }`), or `{ "user": null }` when signed out |
 | `PATCH /api/me` | `{ role?, lang? }` |
 | `POST /api/me/password` | `{ current, next }` |
 | `DELETE /api/me` | `{ password }`: deletes the account and all its data |
@@ -280,6 +297,7 @@ The two AI endpoints stream the model's reply as server-sent events in the OpenA
 | `200 {"type": "crisis"}` | Crisis language detected; show the help message. Nothing was sent to the model. |
 | `400 bad_request`, `bad_email`, `weak_password`, `invite_invalid` | Invalid input. |
 | `401 unauthorized` / `bad_credentials` | Not signed in / wrong email or password. |
+| `402 payment_required` | Free trial used up and no active membership. |
 | `403 forbidden_origin` | State-changing request from another site. |
 | `409 email_taken` / `too_many_items` | Email already registered / note or upload limit reached. |
 | `413 too_large` | Request body too large (100 KB; 1 MB for notes, 2 MB for uploads). |
@@ -339,11 +357,12 @@ Vendor files are committed so the app runs without a CDN, since CDNs are unrelia
 npm test
 ```
 
-84 tests using Node's built-in test runner, with no extra packages. Each server test starts the app on a random port with a throwaway database (`test/helpers.js`).
+93 tests using Node's built-in test runner, with no extra packages. Each server test starts the app on a random port with a throwaway database (`test/helpers.js`).
 
 | Suite | Covers |
 |---|---|
 | `auth.test.js` | Password hashing, invites (validity, single use, any letter case), registration, login and its throttle, logout, forged cookies, cross-site refusal, profile, password change signing out other devices, account deletion |
+| `billing.test.js` | Free trial shared by questions and AI writing help, 402 after it, crisis and invalid requests not counted, membership unlock and expiry, short free answers vs full member answers, refund when the model fails, payment QR |
 | `data.test.js` | Notes, uploads and progress per user; one account can never see or change another's data, even with the same ids; size limits |
 | `server.test.js` | Content in both languages, static files, path traversal, malformed URLs, security headers, chat and AI writing in test mode, crisis handling, validation, per-account AI limit |
 | `proxy.test.js` | Live mode against a fake model server: request format and API key, streaming, friendly errors that hide upstream details |
@@ -355,6 +374,7 @@ npm test
 ## Known limits
 
 - **No email.** Password resets go through the admin command; there is no self-service reset email yet.
+- **Manual payments.** Memberships are unlocked by hand after a payment is confirmed; there is no automatic WeChat Pay / Alipay integration yet (it needs a merchant account).
 - **Keyword search.** Questions worded very differently from the material can miss; embedding search would help.
 - **Single server process.** Login throttling and AI limits are counted in memory and reset when the app restarts.
 - **Needs a connection.** Offline, the installed app opens and shows a notice, but reading lessons and notes needs the network.

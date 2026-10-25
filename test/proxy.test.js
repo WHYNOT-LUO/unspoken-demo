@@ -47,7 +47,9 @@ const chat = () =>
   });
 
 test("status reports the live model", async () => {
-  assert.deepEqual(await (await app.call("/api/status")).json(), { mock: false, model: "test-model" });
+  const status = await (await app.call("/api/status")).json();
+  assert.equal(status.mock, false);
+  assert.equal(status.model, "test-model");
 });
 
 test("proxies to /chat/completions with the server-side key and streams the reply back", async () => {

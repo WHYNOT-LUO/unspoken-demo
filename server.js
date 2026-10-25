@@ -2,7 +2,7 @@
 // The API key stays on the server; the browser never sees it.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join, extname, resolve, sep, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./lib/config.js";
@@ -198,7 +198,8 @@ async function streamMock(res, lines) {
   res.end("data: [DONE]\n\n");
 }
 
-async function streamModel(res, llm, messages) {
+/** Streams the model's reply. `onFail` runs if the model cannot be reached or returns an error. */
+async function streamModel(res, llm, messages, { maxTokens = llm.maxTokens, onFail = () => {} } = {}) {
   const controller = new AbortController();
   res.on("close", () => controller.abort());
   let upstream;
@@ -206,15 +207,17 @@ async function streamModel(res, llm, messages) {
     upstream = await fetch(`${llm.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
-      body: JSON.stringify({ model: llm.model, messages, stream: true, temperature: 0.3, max_tokens: llm.maxTokens }),
+      body: JSON.stringify({ model: llm.model, messages, stream: true, temperature: 0.3, max_tokens: maxTokens }),
       signal: controller.signal,
     });
   } catch (err) {
     console.error("model request failed:", err.message);
+    onFail();
     return sendJson(res, 502, { error: "model" });
   }
   if (!upstream.ok) {
     console.error("model error:", upstream.status, (await upstream.text()).slice(0, 500));
+    onFail();
     return sendJson(res, 502, { error: "model" });
   }
   sse(res);
@@ -256,7 +259,33 @@ export function createApp(config) {
     res.setHeader("set-cookie", cookie(req, token, SESSION_DAYS * 86400));
   }
 
-  const publicUser = (u) => ({ email: u.email, role: u.role, lang: u.lang, createdAt: u.created_at });
+  const billing = config.billing || { freeUses: Infinity, freeMaxTokens: config.llm?.maxTokens, planDays: 30, price: "", contact: "" };
+  const qrFile = join(dataDir, "pay-qr.png");
+  const isPaid = (u) => u.plan_until > Date.now();
+
+  const publicUser = (u) => ({
+    email: u.email,
+    role: u.role,
+    lang: u.lang,
+    createdAt: u.created_at,
+    plan: {
+      paidUntil: isPaid(u) ? u.plan_until : null,
+      freeLeft: Math.max(0, billing.freeUses - u.free_ai_used),
+    },
+  });
+
+  const publicStatus = () => ({
+    mock: config.mock,
+    model: config.mock ? null : config.llm.model,
+    plan: {
+      freeUses: billing.freeUses,
+      days: billing.planDays,
+      dailyLimit: config.limits.perVisitorPerDay,
+      price: billing.price,
+      contact: billing.contact,
+      qr: existsSync(qrFile),
+    },
+  });
 
   // ----- auth routes -----
 
@@ -362,9 +391,25 @@ export function createApp(config) {
     if (!validate(body)) throw new HttpError(400, "bad_request");
     // Crisis language never reaches the model. The browser shows the fixed safety message.
     if (detectCrisis(crisisText(body), SAFETY.keywords)) return sendJson(res, 200, { type: "crisis" });
+
+    // Free trial: a few uses with short answers, then a paid plan is needed.
+    const paid = isPaid(user);
+    if (!paid && user.free_ai_used >= billing.freeUses) throw new HttpError(402, "payment_required");
     if (!aiLimiter.check(`user:${user.id}`).ok) throw new HttpError(429, "limit");
+    if (!paid && !db.useFreeAi(user.id, billing.freeUses)) throw new HttpError(402, "payment_required");
+    const refund = paid ? () => {} : () => db.refundFreeAi(user.id); // a failed model call does not use up the trial
+
     if (config.mock) return streamMock(res, mockLines(body));
-    return streamModel(res, config.llm, messages(body));
+    return streamModel(res, config.llm, messages({ ...body, brief: !paid }), {
+      maxTokens: paid ? config.llm.maxTokens : billing.freeMaxTokens,
+      onFail: refund,
+    });
+  }
+
+  async function payQr(req, res) {
+    if (!existsSync(qrFile)) throw new HttpError(404, "not_found");
+    res.writeHead(200, { "content-type": "image/png", "cache-control": "no-cache" });
+    res.end(await readFile(qrFile));
   }
 
   // ----- routing -----
@@ -373,7 +418,8 @@ export function createApp(config) {
 
   /** [method, path, handler, needs login]. A path ending in /:id captures one id segment. */
   const routes = [
-    ["GET", "/api/status", (req, res) => sendJson(res, 200, { mock: config.mock, model: config.mock ? null : config.llm.model }), false],
+    ["GET", "/api/status", (req, res) => sendJson(res, 200, publicStatus()), false],
+    ["GET", "/api/pay/qr", payQr, true],
     ["POST", "/api/auth/register", register, false],
     ["POST", "/api/auth/login", login, false],
     ["POST", "/api/auth/logout", logout, false],

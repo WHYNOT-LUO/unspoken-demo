@@ -132,6 +132,7 @@ async function loadContent() {
 
 function renderAll() {
   applyStaticText();
+  renderPlanLine();
   renderCourses();
   renderLibrary();
   renderNotes();
@@ -773,6 +774,7 @@ function openAssistDialog(task, note) {
       if ((res.headers.get("content-type") || "").includes("application/json")) {
         const data = await res.json();
         if (res.status === 401) return showAuth("expired");
+        if (res.status === 402) return showUpgrade();
         return finish(data.type === "crisis" ? crisisHtml() : `<p class="msg error">${esc(serverError(data))}</p>`);
       }
       await readStream(res, (chunk) => {
@@ -781,6 +783,7 @@ function openAssistDialog(task, note) {
       });
       result = result.trim();
       finish(result ? md(result) : `<p class="msg error">${t("err.noResult")}</p>`);
+      if (!state.status.demo) refreshUser();
     })
     .catch((err) => {
       if (err.name !== "AbortError") finish(`<p class="msg error">${t("err.network")}</p>`);
@@ -1054,6 +1057,7 @@ async function ask(question) {
       if (data.type === "crisis") state.messages[i] = { role: "assistant", kind: "crisis" };
       else Object.assign(msg, { kind: "error", content: serverError(data) });
       if (res.status === 401) showAuth("expired");
+      if (res.status === 402) showUpgrade();
     } else {
       await readStream(res, (text) => {
         msg.content += text;
@@ -1068,6 +1072,7 @@ async function ask(question) {
     state.busy = false;
     updateComposer();
     renderMessages();
+    if (state.user && !state.status.demo) refreshUser();
   }
 }
 
@@ -1118,6 +1123,64 @@ $("#messages").addEventListener("click", async (e) => {
     }
   }
 });
+
+// ---------- free trial and membership ----------
+
+const fmtDay = (ms) => new Date(ms).toLocaleDateString(getLang() === "en" ? "en-GB" : "zh-CN", { dateStyle: "long" });
+
+function renderPlanLine() {
+  const el = $("#planLine");
+  const plan = state.user?.plan;
+  if (!plan || state.status.demo || plan.paidUntil) {
+    el.hidden = true;
+    return;
+  }
+  el.hidden = false;
+  const text = plan.freeLeft > 0 ? t("plan.freeLeft", { n: plan.freeLeft }) : t("plan.freeNone");
+  el.innerHTML = `<span>${esc(text)}</span><button type="button" class="linklike" data-open="upgrade">${t("plan.upgrade")}</button>`;
+}
+
+/** Re-reads the account after an AI call, so the trial counter stays right. */
+async function refreshUser() {
+  try {
+    const { user } = await get("/api/me");
+    if (user) {
+      state.user = user;
+      renderPlanLine();
+    }
+  } catch {
+    /* the counter just stays as it was */
+  }
+}
+
+function showUpgrade() {
+  const plan = state.user?.plan || {};
+  const info = state.status.plan || {};
+  const body = plan.paidUntil
+    ? t("plan.member", { date: fmtDay(plan.paidUntil) })
+    : plan.freeLeft > 0
+      ? t("plan.bodyFree", { n: plan.freeLeft, days: info.days, limit: info.dailyLimit })
+      : t("plan.bodyUsedUp", { days: info.days, limit: info.dailyLimit });
+  const email = esc(state.user?.email || "");
+  const steps = [
+    info.qr ? `<li>${t("plan.step1")}</li>` : "",
+    `<li>${info.contact ? t("plan.step2", { email, contact: esc(info.contact) }) : t("plan.step2NoContact", { email })}</li>`,
+    `<li>${t("plan.step3")}</li>`,
+  ].join("");
+  const howTo =
+    plan.paidUntil
+      ? ""
+      : info.qr || info.contact
+        ? `<h3>${t("plan.howTitle")}</h3><ol>${steps}</ol>${info.qr ? `<img class="pay-qr" src="api/pay/qr" alt="${t("plan.qrAlt")}">` : ""}`
+        : `<p class="meta">${t("plan.notSetUp")}</p>`;
+  showInfo(
+    "upgrade",
+    `<h2>${t("plan.title")}</h2>
+    <p>${body}</p>
+    ${info.price && !plan.paidUntil ? `<p><b>${t("plan.price", { price: esc(info.price) })}</b></p>` : ""}
+    ${howTo}`
+  );
+}
 
 // ---------- help, about, welcome ----------
 
@@ -1371,6 +1434,16 @@ function openAccount() {
       <h2>${t("account.title")}</h2>
       <p class="meta">${esc(u.email)} · ${t("account.joined", { date: joined })}</p>
       <hr>
+      <h3>${t("account.planTitle")}</h3>
+      <p class="meta">${
+        u.plan?.paidUntil
+          ? t("plan.member", { date: fmtDay(u.plan.paidUntil) })
+          : u.plan?.freeLeft > 0
+            ? t("plan.freeLeft", { n: u.plan.freeLeft })
+            : t("plan.freeNone")
+      }</p>
+      ${u.plan?.paidUntil ? "" : `<button type="button" class="primary" data-open="upgrade">${t("plan.upgrade")}</button>`}
+      <hr>
       <h3>${t("account.pwTitle")}</h3>
       <div class="field-row">
         <input type="password" id="pwCurrent" autocomplete="current-password" placeholder="${t("account.pwCurrent")}" aria-label="${t("account.pwCurrent")}">
@@ -1523,6 +1596,7 @@ document.addEventListener("click", (e) => {
   if (open === "help") showHelp();
   if (open === "about") showAbout();
   if (open === "account") openAccount();
+  if (open === "upgrade") showUpgrade();
   const nav = e.target.closest("[data-nav]")?.dataset.nav;
   if (nav) setView(nav);
 });

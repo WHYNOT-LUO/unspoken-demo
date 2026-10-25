@@ -78,6 +78,29 @@ sudo -u unspoken node --disable-warning=ExperimentalWarning scripts/admin.js inv
 
 Send people the address `https://your-domain.com` and the code. On a phone they can use **Add to Home Screen** (iPhone: Safari share menu; Android: Chrome menu) to install it like an app.
 
+## Taking payments
+
+Each account gets 3 free AI uses; after that the app shows an upgrade screen. To set it up:
+
+1. Add the price and your contact to `/opt/unspoken/app/.env`, then restart (`sudo systemctl restart unspoken`):
+   ```
+   PLAN_PRICE=¥19 / 30 天
+   PAY_CONTACT=微信 your-wechat-id
+   ```
+2. Put your payment QR code on the server. From your Mac (with the image saved as `pay-qr.png`):
+   ```bash
+   scp pay-qr.png root@SERVER_IP:/var/lib/unspoken/pay-qr.png
+   ssh root@SERVER_IP chown unspoken:unspoken /var/lib/unspoken/pay-qr.png
+   ```
+3. When someone pays and sends you their account email, unlock 30 days:
+   ```bash
+   cd /opt/unspoken/app
+   sudo -u unspoken node --disable-warning=ExperimentalWarning scripts/admin.js grant person@example.com
+   ```
+   Running it again before the membership ends adds another 30 days on top.
+
+Before charging real users, check with the client about what charging requires where they operate (for example business registration, tax, refunds, and payments made by minors).
+
 ## Everyday administration
 
 All admin commands run on the server, from `/opt/unspoken/app`, as the `unspoken` user:
@@ -90,6 +113,8 @@ alias unspoken-admin='sudo -u unspoken node --disable-warning=ExperimentalWarnin
 | Task | Command |
 |---|---|
 | Create an invite code | `unspoken-admin invite 5 "note to self"` |
+| Unlock a membership after payment | `unspoken-admin grant person@example.com` (add a number of days to change the default 30) |
+| End a membership | `unspoken-admin revoke person@example.com` |
 | List invite codes | `unspoken-admin invites` |
 | List accounts | `unspoken-admin users` |
 | Someone forgot their password | `unspoken-admin reset-password person@example.com`, then send them the temporary password privately; they change it under **Account** |

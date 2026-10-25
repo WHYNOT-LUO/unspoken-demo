@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createApp } from "../server.js";
 import { openDb } from "../lib/db.js";
 
-export async function startApp({ mock = true, llm = {}, limits = {} } = {}) {
+export async function startApp({ mock = true, llm = {}, limits = {}, billing = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "unspoken-test-"));
   mkdirSync(join(dir, "content", "courses", "en"), { recursive: true });
   mkdirSync(join(dir, "content", "library"), { recursive: true });
@@ -22,6 +22,8 @@ export async function startApp({ mock = true, llm = {}, limits = {} } = {}) {
     mock,
     llm,
     limits: { perVisitorPerDay: 100, sitePerDay: 1000, ...limits },
+    // Generous by default so other tests are not affected; billing.test.js sets the real trial.
+    billing: { freeUses: 1000, freeMaxTokens: 250, planDays: 30, price: "", contact: "", ...billing },
   });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -51,6 +53,7 @@ export async function startApp({ mock = true, llm = {}, limits = {} } = {}) {
   return {
     base,
     db,
+    dataDir: join(dir, "data"),
     call,
     signUp,
     sessionCookie,
