@@ -164,7 +164,7 @@ Any OpenAI-compatible endpoint should work; DeepSeek is the one tested. For main
 
 | Provider | `LLM_BASE_URL` | `LLM_MODEL` |
 |---|---|---|
-| DeepSeek (default) | `https://api.deepseek.com` | `deepseek-chat` |
+| DeepSeek (default) | `https://api.deepseek.com` | `deepseek-flash` |
 | Qwen (Alibaba DashScope) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
 
 To show the local app to someone else temporarily, `start-public-demo.command` opens a free Cloudflare quick tunnel and prints a public `https://…trycloudflare.com` link (needs `bin/cloudflared`; the script explains where to get it if it is missing). The link lasts only while that window is open.
@@ -205,7 +205,8 @@ Set these in `.env` (next to `server.js`) or as environment variables. Environme
 |---|---|---|
 | `LLM_API_KEY` | *(empty)* | Model API key. Empty means test mode. |
 | `LLM_BASE_URL` | `https://api.deepseek.com` | OpenAI-compatible base URL; `/chat/completions` is appended. |
-| `LLM_MODEL` | `deepseek-chat` | Model name. |
+| `LLM_MODEL` | `deepseek-flash` | Model name. |
+| `LLM_EXTRA_BODY` | for DeepSeek: `{"thinking":{"type":"disabled"}}` | Extra JSON fields sent with each model request. DeepSeek's thinking mode is off by default here: it costs more and could use up a short free answer before any text appears. |
 | `LLM_MAX_TOKENS` | `800` | Longest reply, in tokens. |
 | `LLM_MOCK` | *(off)* | Set to `1` to force test mode even with a key. |
 | `FREE_AI_USES` | `3` | Free AI uses per account (questions and AI writing help together). |

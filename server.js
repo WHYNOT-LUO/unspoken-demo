@@ -207,7 +207,7 @@ async function streamModel(res, llm, messages, { maxTokens = llm.maxTokens, onFa
     upstream = await fetch(`${llm.baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${llm.apiKey}` },
-      body: JSON.stringify({ model: llm.model, messages, stream: true, temperature: 0.3, max_tokens: maxTokens }),
+      body: JSON.stringify({ ...llm.extraBody, model: llm.model, messages, stream: true, temperature: 0.3, max_tokens: maxTokens }),
       signal: controller.signal,
     });
   } catch (err) {

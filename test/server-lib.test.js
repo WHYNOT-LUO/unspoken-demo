@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { parseFrontMatter, loadDocs, loadLocalized } from "../lib/content.js";
 import { buildMessages, buildAssistMessages, ASSIST_TASKS, SYSTEM_PROMPT } from "../lib/prompt.js";
 import { createLimiter } from "../lib/ratelimit.js";
-import { parseEnv } from "../lib/config.js";
+import { parseEnv, loadConfig } from "../lib/config.js";
 
 test("parseFrontMatter reads key: value pairs and the body", () => {
   const { meta, body } = parseFrontMatter("---\ntitle: 第一课\norder: 2\n---\n正文内容");
@@ -78,6 +78,24 @@ test("limiter enforces the global limit", () => {
   const r = limiter.check("c", now);
   assert.equal(r.ok, false);
   assert.equal(r.reason, "global");
+});
+
+test("DeepSeek defaults to deepseek-flash with thinking turned off", () => {
+  const saved = { ...process.env };
+  try {
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLM_MODEL;
+    delete process.env.LLM_EXTRA_BODY;
+    const config = loadConfig("/nonexistent/.env");
+    assert.equal(config.llm.model, "deepseek-flash");
+    assert.deepEqual(config.llm.extraBody, { thinking: { type: "disabled" } });
+    process.env.LLM_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
+    assert.deepEqual(loadConfig("/nonexistent/.env").llm.extraBody, {});
+    process.env.LLM_EXTRA_BODY = '{"enable_thinking":false}';
+    assert.deepEqual(loadConfig("/nonexistent/.env").llm.extraBody, { enable_thinking: false });
+  } finally {
+    process.env = saved;
+  }
 });
 
 test("parseEnv reads KEY=value lines, ignoring comments and quotes", () => {

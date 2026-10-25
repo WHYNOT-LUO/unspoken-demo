@@ -29,7 +29,13 @@ before(async () => {
 
   app = await startApp({
     mock: false,
-    llm: { baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`, apiKey: "sk-test", model: "test-model", maxTokens: 100 },
+    llm: {
+      baseUrl: `http://127.0.0.1:${upstream.address().port}/v1`,
+      apiKey: "sk-test",
+      model: "test-model",
+      maxTokens: 100,
+      extraBody: { thinking: { type: "disabled" } },
+    },
   });
   cookie = await app.signUp("proxy@test.dev");
 });
@@ -60,6 +66,7 @@ test("proxies to /chat/completions with the server-side key and streams the repl
   assert.equal(received.auth, "Bearer sk-test");
   assert.equal(received.body.model, "test-model");
   assert.equal(received.body.stream, true);
+  assert.deepEqual(received.body.thinking, { type: "disabled" });
   assert.equal(received.body.messages[0].role, "system");
   assert.match(received.body.messages.at(-1).content, /《课》/);
   assert.match(text, /根据资料/);
