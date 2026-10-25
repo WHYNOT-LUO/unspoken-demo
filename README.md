@@ -9,7 +9,7 @@ It has accounts, keeps each user's notes, uploads and progress on the server, in
 | | Link | What it is |
 |---|---|---|
 | **Demo** | **[whynot-luo.github.io/unspoken-demo](https://whynot-luo.github.io/unspoken-demo/)** | Always on, no sign-up. Everything works except the AI: answers are clearly labelled sample text, and what you write stays in your browser. |
-| **The app** | *Coming soon* | The real app with accounts and real AI answers: a free trial of 3 AI uses, then a paid membership. Its address and a public invite code will be posted here once the server is live. |
+| **The app** | **[loose-participant-kit-entertainment.trycloudflare.com](https://loose-participant-kit-entertainment.trycloudflare.com)** | The real app with accounts and real AI answers: a free trial of 3 AI uses, then a paid membership. Sign-up needs an invite code. For now it runs on the developer's computer through a temporary Cloudflare link, so it is online only while that computer is on, and the address can change. |
 
 ![Lesson with a cited AI answer](docs/screenshots/lesson-and-answer-en.png)
 
