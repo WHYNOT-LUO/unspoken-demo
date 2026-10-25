@@ -6,13 +6,16 @@
 #   - keeps the Mac from sleeping (closing a laptop lid still sleeps it, so keep the lid open);
 #   - restarts the server or the tunnel if either stops, or if the public link stops answering;
 #   - copies the current link to the clipboard, saves it in data/public-link.txt,
-#     and shows a notification whenever the link changes.
+#     and shows a notification whenever the link changes;
+#   - puts each new link in README.md ("Try it" table) and pushes that one change to GitHub
+#     (set UPDATE_README=0 to turn this off; see data/readme-update.log for what happened).
 cd "$(dirname "$0")"
 
 PORT=3100
 LINK_FILE=data/public-link.txt
 CHECK_EVERY=${CHECK_EVERY:-60}   # seconds between health checks
 MAX_FAILS=${MAX_FAILS:-5}        # restart the tunnel after this many failed checks in a row
+UPDATE_README=${UPDATE_README:-1} # 1: publish each new link in README.md on GitHub
 
 if [ ! -x ./bin/cloudflared ]; then
   echo "cloudflared is missing. Download it from"
@@ -47,6 +50,36 @@ caffeinate -ims -w $$ &
 
 notify() {
   osascript -e "display notification \"$1\" with title \"Unspoken\"" >/dev/null 2>&1
+}
+
+# Puts the link in README.md's "The app" row, commits only that file and pushes it.
+# It skips (and says why in data/readme-update.log) when README.md or the staging area has edits
+# of their own, when not on main, or when this copy and GitHub differ, so nothing else is ever pushed.
+update_readme() {
+  local url=$1 host=${1#https://}
+  {
+    echo "$(date '+%F %T') $url"
+    [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = main ] || { echo "skipped: not on the main branch"; return; }
+    if ! git diff --quiet -- README.md || ! git diff --cached --quiet; then
+      echo "skipped: README.md or the staging area has uncommitted changes"
+      return
+    fi
+    git fetch -q origin main || { echo "skipped: could not reach GitHub"; return; }
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || { echo "skipped: this copy and GitHub differ (pull or push first)"; return; }
+    if grep -qF "| **The app** | **[$host]($url)**" README.md; then
+      echo "already up to date"
+      return
+    fi
+    sed -i '' -E "s#^(\| \*\*The app\*\* \| )\*\*\[[^]]*\]\([^)]*\)\*\*#\1**[$host]($url)**#" README.md
+    git diff --quiet -- README.md && { echo "skipped: the app row was not found in README.md"; return; }
+    git commit -q -m "README: current app link" -- README.md || { echo "skipped: commit failed"; git checkout -q -- README.md; return; }
+    if git push -q origin main; then
+      echo "pushed"
+    else
+      echo "push failed; change undone"
+      git reset -q HEAD~1 && git checkout -q -- README.md
+    fi
+  } >>data/readme-update.log 2>&1
 }
 
 server_up() {
@@ -90,6 +123,7 @@ start_tunnel() {
   echo "=============================================="
   echo
   notify "New link copied: $URL"
+  [ "$UPDATE_README" = 1 ] && update_readme "$URL" &   # in the background, so a slow push never holds up the checks
 }
 
 public_ok() {

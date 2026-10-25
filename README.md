@@ -177,7 +177,7 @@ Any OpenAI-compatible endpoint should work; DeepSeek is the one tested. For main
 | DeepSeek (default) | `https://api.deepseek.com` | `deepseek-flash` |
 | Qwen (Alibaba DashScope) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
 
-To let others use the app running on your own computer, double-click `start-public-demo.command` (needs `bin/cloudflared`; the script explains where to get it if it is missing). It starts the app and a free Cloudflare quick tunnel, prints a public `https://…trycloudflare.com` link and copies it to the clipboard. While its window is open it keeps the Mac awake, restarts the server or tunnel if either stops, and starts a new tunnel if the link stops answering for five minutes; a new link is announced with a notification and saved in `data/public-link.txt`. Close the window to stop.
+To let others use the app running on your own computer, double-click `start-public-demo.command` (needs `bin/cloudflared`; the script explains where to get it if it is missing). It starts the app and a free Cloudflare quick tunnel, prints a public `https://…trycloudflare.com` link and copies it to the clipboard. While its window is open it keeps the Mac awake, restarts the server or tunnel if either stops, and starts a new tunnel if the link stops answering for five minutes; a new link is announced with a notification and saved in `data/public-link.txt`. Each new link is also written into the "Try it" table of this README and pushed to GitHub (only that one file, and only when `README.md` has no other edits and this copy matches GitHub; the result is logged in `data/readme-update.log`; set `UPDATE_README=0` to turn it off). Close the window to stop.
 
 ## Running it on a server
 
