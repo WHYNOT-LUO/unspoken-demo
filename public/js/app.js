@@ -905,7 +905,11 @@ function messageHtml(m, i) {
     <div class="msg ai" data-i="${i}">
       <div class="prose">${m.content ? md(withCites(m.content, m.sources.length)) : ""}</div>
       ${m.pending ? `<span class="typing" data-label="${esc(t("chat.sending"))}"></span>` : ""}
-      <div class="sources"><span class="sources-label">${t("chat.sources")}</span>${sources}</div>
+      ${
+        m.sources.length
+          ? `<div class="sources"><span class="sources-label">${t("chat.sources")}</span>${sources}</div>`
+          : `<p class="general-note">${t("chat.general")}</p>`
+      }
       ${
         m.pending
           ? ""
@@ -1020,18 +1024,13 @@ async function ask(question) {
     return renderMessages();
   }
 
+  // Material first: the best passages go to the model. With no match, the model still answers,
+  // from general knowledge, and the answer is labelled as such.
   const docIds = scopeDocIds();
-  if (!docIds.length) {
-    state.messages.push({ role: "assistant", kind: "notice", key: "chat.noDocs" });
-    return renderMessages();
-  }
-
-  let hits = search(state.index, question, { topK: 5, docIds });
+  let hits = docIds.length ? search(state.index, question, { topK: 5, docIds }) : [];
   const previous = lastAnsweredQuestion(userIndex);
-  if (!hits.length && previous && isFollowUp(question)) hits = search(state.index, `${previous} ${question}`, { topK: 5, docIds });
-  if (!hits.length) {
-    state.messages.push({ role: "assistant", kind: "notice", key: "chat.noHit" });
-    return renderMessages();
+  if (!hits.length && docIds.length && previous && isFollowUp(question)) {
+    hits = search(state.index, `${previous} ${question}`, { topK: 5, docIds });
   }
 
   const msg = { role: "assistant", kind: "answer", content: "", pending: true, question, sources: mergeByDoc(hits) };

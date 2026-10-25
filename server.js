@@ -133,7 +133,8 @@ function validateChat(body) {
   const { question, history = [], sources, role, lang } = body;
   if (!validRole(role) || !validLang(lang)) return false;
   if (typeof question !== "string" || !question.trim() || question.length > MAX_QUESTION) return false;
-  if (!Array.isArray(sources) || sources.length === 0 || sources.length > MAX_SOURCES) return false;
+  // No sources is allowed: the model then answers from general knowledge, clearly labelled.
+  if (!Array.isArray(sources) || sources.length > MAX_SOURCES) return false;
   if (!sources.every((s) => isString(s?.title, 500) && isString(s?.text, MAX_SOURCE_CHARS))) return false;
   return Array.isArray(history);
 }
@@ -158,6 +159,11 @@ function sse(res) {
 const delta = (text) => `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`;
 
 function mockChatLines({ sources, lang }) {
+  if (!sources.length) {
+    return lang === "en"
+      ? ["[Test mode: no AI model connected. This is not a real answer.]\n\n", "Nothing in the material matched. Once a model is connected, the AI answers from general knowledge here and labels it as such."]
+      : ["【测试模式：未连接 AI 模型，以下不是真实回答】\n\n", "资料里没有找到相关内容。连接模型后，AI 会在这里用一般知识回答，并标明不来自课程资料。"];
+  }
   if (lang === "en") {
     return [
       "[Test mode: no AI model connected. This is not a real answer.]\n\n",

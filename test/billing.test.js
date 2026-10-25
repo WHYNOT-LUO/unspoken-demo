@@ -39,7 +39,7 @@ test("questions and AI writing help share the free uses; then payment is require
 test("crisis messages and invalid requests do not use up the trial", async () => {
   const cookie = await app.signUp("fair@test.dev");
   await chat(cookie, { ...chatBody, question: "我不想活了" });
-  await chat(cookie, { ...chatBody, sources: [] });
+  await chat(cookie, { ...chatBody, sources: "not a list" });
   await assist(cookie, "我想自杀");
   assert.equal((await me(cookie)).plan.freeLeft, 3);
 });

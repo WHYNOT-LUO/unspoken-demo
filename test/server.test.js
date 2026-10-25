@@ -75,8 +75,16 @@ test("crisis language is answered with the crisis signal, not the model", async 
   assert.deepEqual(await (await assist({ task: "gentle", text: "我想自杀" })).json(), { type: "crisis" });
 });
 
+test("a question with no matching material is still answered (from general knowledge)", async () => {
+  const res = await chat({ ...okBody, sources: [] });
+  assert.equal(res.status, 200);
+  assert.match(await res.text(), /一般知识/);
+});
+
 test("invalid chat requests are rejected", async () => {
-  assert.equal((await chat({ ...okBody, sources: [] })).status, 400);
+  const nine = Array.from({ length: 9 }, () => ({ title: "t", text: "x" }));
+  assert.equal((await chat({ ...okBody, sources: nine })).status, 400);
+  assert.equal((await chat({ ...okBody, sources: "none" })).status, 400);
   assert.equal((await chat({ ...okBody, role: "admin" })).status, 400);
   assert.equal((await chat({ ...okBody, lang: "fr" })).status, 400);
   assert.equal((await assist({ task: "anything", text: "x" })).status, 400);

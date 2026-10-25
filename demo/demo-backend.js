@@ -97,6 +97,11 @@ async function isCrisis(text) {
 }
 
 function chatLines({ sources, lang }) {
+  if (!sources.length) {
+    return lang === "en"
+      ? ["**Demo:** no AI is called here.\n\n", "Nothing in the material matched this question. In the real app, the AI answers from general psychology knowledge here, clearly labelled as not coming from the course materials."]
+      : ["**演示版：**这里不会调用 AI。\n\n", "课程资料里没有找到相关内容。在正式版里，AI 会在这里用一般心理学知识回答，并明确标出这部分不来自课程资料。"];
+  }
   if (lang === "en") {
     return [
       "**Demo:** no AI is called here, so this is sample text.\n\n",

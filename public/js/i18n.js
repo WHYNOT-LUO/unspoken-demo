@@ -25,12 +25,11 @@ const zh = {
   "chat.questionAria": "你的问题",
   "chat.send": "发送",
   "chat.sending": "回答中…",
-  "chat.fine": "只根据所选资料回答 · 不是心理咨询 ·",
+  "chat.fine": "优先依据所选资料 · 不是心理咨询 ·",
   "chat.helpLink": "需要帮助",
   "chat.intro1": "你可以问关于课程内容的问题，也可以先在“我的资料”里上传自己找到的资料，再把“回答依据”切换过去。",
-  "chat.intro2": "未言只根据所选资料回答。资料里没有的内容，它会直接告诉你。",
-  "chat.noHit": "资料里没有找到和这个问题相关的内容。可以换个说法再问，或者到“我的资料”上传相关资料后，把“回答依据”切换过去。",
-  "chat.noDocs": "现在还没有可以作为依据的资料。课程上线后就可以提问；你也可以先到“我的资料”上传资料。",
+  "chat.intro2": "未言会优先根据所选资料回答并标出来源；资料没有涉及时，会用一般心理学知识补充，并明确标出。",
+  "chat.general": "资料里没有找到相关内容，这条回答来自 AI 的一般知识，不来自课程资料，仅供参考。",
   "chat.sources": "依据的资料（点开可看原文）",
   "chat.save": "记笔记",
   "chat.copy": "复制",
@@ -100,7 +99,7 @@ const zh = {
   "common.working": "正在处理…",
 
   "lib.title": "我的资料",
-  "lib.hint": "上传你找到的文章或资料，然后在“问问未言”里把“回答依据”切换到它，未言就只根据这些资料回答。<br>资料保存在你的账户里，其他用户看不到；提问时，和问题相关的几段内容会发送给 AI 模型来生成回答。", // HTML
+  "lib.hint": "上传你找到的文章或资料，然后在“问问未言”里把“回答依据”切换到它，未言就会优先根据这些资料回答。<br>资料保存在你的账户里，其他用户看不到；提问时，和问题相关的几段内容会发送给 AI 模型来生成回答。", // HTML
   "lib.upload": "上传资料",
   "lib.drop": "点击选择，或把文件拖到这里 · 支持 PDF、Word（.docx）、TXT、Markdown，单个不超过 15MB",
   "lib.empty": "还没有上传资料。",
@@ -298,12 +297,11 @@ const en = {
   "chat.questionAria": "Your question",
   "chat.send": "Send",
   "chat.sending": "Answering…",
-  "chat.fine": "Answers only from the selected material · Not counselling ·",
+  "chat.fine": "Answers from the selected material first · Not counselling ·",
   "chat.helpLink": "Get help",
   "chat.intro1": "Ask anything about the courses. You can also upload your own materials in “My materials” and switch “Answer from” to them.",
-  "chat.intro2": "Unspoken answers only from the selected material. If something isn't in it, it will tell you.",
-  "chat.noHit": "Nothing in the material matches this question. Try asking in a different way, or upload related material in “My materials” and switch “Answer from” to it.",
-  "chat.noDocs": "There is no material to answer from yet. Once courses are online you can ask about them, or you can upload your own material in “My materials”.",
+  "chat.intro2": "Unspoken answers from the selected material first and shows its sources; when the material doesn't cover something, it adds general psychology knowledge and says so.",
+  "chat.general": "Nothing in the material matched, so this answer comes from the AI's general knowledge, not the course materials. Treat it as general information.",
   "chat.sources": "Sources (tap to read)",
   "chat.save": "Save to notes",
   "chat.copy": "Copy",
@@ -373,7 +371,7 @@ const en = {
   "common.working": "Working…",
 
   "lib.title": "My materials",
-  "lib.hint": "Upload articles or materials you've found, then switch “Answer from” in “Ask Unspoken” to them, and Unspoken will answer only from them.<br>Materials are saved in your account and are not visible to other users. When you ask a question, the few passages related to it are sent to the AI model to write the answer.", // HTML
+  "lib.hint": "Upload articles or materials you've found, then switch “Answer from” in “Ask Unspoken” to them, and Unspoken will answer from them first.<br>Materials are saved in your account and are not visible to other users. When you ask a question, the few passages related to it are sent to the AI model to write the answer.", // HTML
   "lib.upload": "Upload material",
   "lib.drop": "Click to choose, or drag files here · PDF, Word (.docx), TXT or Markdown, up to 15 MB each",
   "lib.empty": "No materials uploaded yet.",
