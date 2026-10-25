@@ -1,6 +1,6 @@
 # Unspoken 未言
 
-**A bilingual (Chinese / English) emotional-education web app for parents and teenagers.** Users read short lessons, ask an AI tutor that answers only from the course material and cites its sources, and keep private notes with AI writing help. Messages showing signs of self-harm or abuse are never sent to the AI; the app shows emergency contacts instead.
+**A bilingual (Chinese / English) emotional-education web app for parents and teenagers.** Users read short lessons, ask an AI tutor that answers from the lessons and a built-in psychology reference library first (citing its sources) and adds clearly labelled general knowledge when the material doesn't cover a question, and keep private notes with AI writing help. Messages showing signs of self-harm or abuse are never sent to the AI; the app shows emergency contacts instead.
 
 It has accounts, keeps each user's notes, uploads and progress on the server, installs on phones like an app, and comes with scripts to run it on your own server with HTTPS. AI use starts with a free trial (3 uses, short answers); after that, a paid monthly membership unlocks it.
 
@@ -15,7 +15,7 @@ It has accounts, keeps each user's notes, uploads and progress on the server, in
 
 > **Status: beta.** Sign-up is by invite code, with a free AI trial and a paid membership (payments are confirmed by hand for now). It is not a substitute for counselling or therapy. The seven lessons and the safety text are drafts written with AI from the project notes. They are marked "草稿 · 待审核 / Draft · pending review" in the app and must be reviewed by a qualified professional before a wider launch.
 
-**中文简介：** 未言是一个面向家长和学生的情绪教育网站，支持中文和英文。用户注册账户后可以阅读课程，向只根据课程资料回答、并标注来源的 AI 提问，还可以在笔记本里记录想法、用 AI 帮忙改写；笔记、资料和学习进度保存在自己的账户里，手机上可以“添加到主屏幕”像 App 一样使用。如果用户写下伤害自己或被伤害的内容，这条消息不会发给 AI，而是直接显示求助信息。目前凭邀请码注册，课程和安全文案都是草稿，扩大使用前需要专业人士审核。
+**中文简介：** 未言是一个面向家长和学生的情绪教育网站，支持中文和英文。用户注册账户后可以阅读课程，向 AI 提问：AI 优先根据课程和内置的心理学参考资料（OpenStax 心理学教材节选、美国国立精神卫生研究所科普资料的中文译文）回答并标注来源，资料没有涉及时再用一般知识补充并明确标出；还可以在笔记本里记录想法、用 AI 帮忙改写；笔记、资料和学习进度保存在自己的账户里，手机上可以“添加到主屏幕”像 App 一样使用。如果用户写下伤害自己或被伤害的内容，这条消息不会发给 AI，而是直接显示求助信息。目前凭邀请码注册，课程和安全文案都是草稿，扩大使用前需要专业人士审核。
 
 ---
 
@@ -52,6 +52,10 @@ It has accounts, keeps each user's notes, uploads and progress on the server, in
 |---|---|
 | ![Phone course list in Chinese](docs/screenshots/mobile-courses-zh.png) | ![Phone chat answer in English](docs/screenshots/mobile-answer-en.png) |
 
+| Phone: reference library (Chinese) | Phone: answer citing the textbook (Chinese) |
+|---|---|
+| ![Reference library with sources and licence](docs/screenshots/mobile-library-zh.png) | ![Answer about attachment citing Psychology 2e](docs/screenshots/mobile-answer-zh.png) |
+
 All screenshots are from the running app; the AI answers are real responses from DeepSeek.
 
 ## Features
@@ -73,14 +77,19 @@ All screenshots are from the running app; the AI answers are real responses from
 - Progress tracking ("Completed 2 / 7"), a "next lesson" link, and suggested questions at the end of each lesson that ask the AI with one tap.
 - Select any passage to save it to the notebook or ask the AI about it.
 
-**Ask Unspoken (grounded Q&A)**
-- Answers come only from the chosen material: the courses and platform references, or the user's own uploads.
+**Ask Unspoken (Q&A grounded in the material)**
+- Answers come from the chosen material first: everything (lessons and references), one reference collection or section, or the user's own uploads.
 - Every answer lists its sources as numbered, expandable passages, with matching `[n]` markers in the text.
-- If nothing in the material matches, the app says so and does not call the model.
+- When the material doesn't cover part of a question, the model adds general psychology knowledge under a clear label ("General knowledge (not from the course materials)"). When nothing matches at all, the answer carries that label and a note.
 - Recent answered turns are sent along, and a short follow-up that matches nothing on its own ("Why?", "那具体怎么做？") is searched together with the previous question.
 
+**Reference library**
+- 16 sections of the open textbook *Psychology 2e* (OpenStax): development and attachment, adolescence, motivation, emotion, conformity, aggression and bullying, relationships, stress and coping, happiness, anxiety, mood disorders, ADHD and autism, and types of therapy.
+- 9 public-domain guides from the US National Institute of Mental Health (NIMH), e.g. teen depression, stress vs anxiety, children's mental health, social anxiety, ADHD, eating disorders.
+- English originals, plus Chinese AI translations (marked as not reviewed line by line). Figures, exercises, external links and US helpline numbers are removed. Sources and licences are shown in the app; see [Credits and licence](#credits-and-licence).
+
 **My materials**
-- Upload PDF, Word (.docx), TXT or Markdown, up to 15 MB each. Text is extracted in the browser and the text is saved to the account.
+- Upload PDF, Word (.docx), TXT or Markdown, up to 15 MB each. Text is extracted in the browser and the text is saved to the account. Copyrighted books can be uploaded for personal use only; they stay in that user's account.
 
 **Notebook**
 - Notes with Markdown preview, search, and export to Markdown. Saves automatically and retries if the connection drops.
@@ -96,6 +105,8 @@ All screenshots are from the running app; the AI answers are real responses from
 - "Add to Home Screen" installs it with its own icon and full-screen view, no app store needed.
 - Opens without a connection and says so; unsaved notes are saved when the connection returns.
 - Light and dark mode follow the system setting.
+- Phone layout: top bar, content and tab bar fill the screen (safe areas on notched phones handled), tap targets of at least 34–40 px, and 16 px text in fields so iPhones don't zoom in.
+- Fast on slow connections: Brotli/gzip compression, ETags (unchanged files and lessons answer `304`), preloaded modules, and a service worker that opens the app from its saved copy and refreshes it in the background. The reference library loads after the first screen. Over a simulated 300 ms / 1.5 Mbps link the first visit is usable in about 2 s and a reload in under 1 s.
 
 ## How it works
 
@@ -104,8 +115,7 @@ flowchart TD
   U[User question] --> C{Crisis words?}
   C -- yes --> H[Show help message and emergency numbers<br/>nothing sent to the AI]
   C -- no --> R[Search the selected material<br/>in the browser]
-  R -- no match --> N[Say the material doesn't cover it<br/>no model call]
-  R -- top passages --> S[Server: signed in?]
+  R -- top passages, or none --> S[Server: signed in?]
   S --> C2{Crisis words?<br/>checked again}
   C2 -- yes --> H
   C2 -- no --> P{Member, or free<br/>trial use left?}
@@ -113,11 +123,11 @@ flowchart TD
   P -- yes --> L{Daily limit<br/>reached?}
   L -- yes --> E[Friendly limit message]
   L -- no --> M[DeepSeek or another<br/>OpenAI-compatible model]
-  M -- streamed answer with citations --> U
+  M -- streamed answer: cited material first,<br/>labelled general knowledge if needed --> U
 ```
 
-1. **Retrieval runs in the browser** (`public/js/retrieval.js`). Text is split into passages (about 400 characters for Chinese, 900 for English), indexed with BM25 over Chinese character bigrams and English words (with stop words and light stemming), and the five best passages are kept. A passage must share at least two meaningful terms with the question (one, if the question has only one).
-2. **The server builds the prompt** (`lib/prompt.js`): fixed rules, the user's role and language, the numbered passages, and the question. The rules tell the model to answer only from the passages, cite them, say when the material doesn't cover something, avoid diagnosis and blame, and ignore instructions hidden inside the material.
+1. **Retrieval runs in the browser** (`public/js/retrieval.js`). Text is split into passages (about 400 characters for Chinese, 900 for English), indexed with BM25 over Chinese character bigrams and English words (with stop words and light stemming), and the five best passages are kept. A passage must share at least two meaningful terms with the question; a question with a single distinctive topic word ("什么是依恋") can also match passages that are about that word (it is in the title or used at least three times). A short synonym list links everyday words to the material's terms (孩子/儿童, 霸凌/欺凌, teen/adolescent) and counts them as one term.
+2. **The server builds the prompt** (`lib/prompt.js`): fixed rules, the user's role and language, the numbered passages, and the question. The rules tell the model to answer from the passages first and cite them, to add general knowledge only under a fixed label, to show no phone numbers except 110 and 120, to avoid diagnosis and blame, and to ignore instructions hidden inside the material.
 3. **The server proxies the model** (`server.js`) and streams the reply back. The API key stays on the server.
 4. **Accounts and data** live in a SQLite database using Node's built-in `node:sqlite` (`lib/db.js`), so the app still has no third-party runtime dependencies.
 
@@ -127,7 +137,7 @@ flowchart TD
 |---|---|
 | **Crisis messages** | Questions and AI-writing text are screened for self-harm and abuse terms in the browser *and* on the server. A match shows a fixed help message with emergency numbers and is never sent to the AI. Chinese terms match ignoring spaces and punctuation; English terms match whole words, so "grapes" does not trigger "rape". |
 | **Hotlines** | Only numbers marked `"verified": true` in `public/config/safety.json` are shown. Just 110 (police) and 120 (ambulance) are enabled; helpline entries stay hidden until a person verifies the numbers from an official source. |
-| **Grounded answers** | The model only sees the selected passages. With no match, no model call is made. |
+| **Grounded answers** | The model sees the selected passages and must cite them; anything beyond them is labelled as general knowledge, and the app adds a note when no material matched. |
 | **What the server stores** | Accounts (email and a salted scrypt hash of the password), hashes of session tokens, invite codes, and each user's notes, uploaded text and progress. Every query is scoped to the signed-in user, and tests check that one account can never read or change another's data. Whoever runs the server can read the database file. |
 | **What reaches the AI** | Only the question, the matching passages, recent answered turns, and text sent to AI writing help. The server does not store any of it. |
 | **Sessions** | Random tokens, stored on the server only as SHA-256 hashes, in an `HttpOnly`, `SameSite=Lax` cookie (also `Secure` behind HTTPS), valid for 30 days. Changing the password signs out other devices. |
@@ -232,7 +242,7 @@ Lessons are Markdown (`.md`) or plain-text (`.txt`) files. Refresh the page afte
 |---|---|
 | `content/courses/` | Chinese lessons |
 | `content/courses/en/` | English lessons, **with the same file names** so progress carries across languages |
-| `content/library/` (and `library/en/`) | Platform reference material the AI can also answer from |
+| `content/library/` (and `library/en/`) | Platform reference material the AI can also answer from (currently the OpenStax and NIMH collections; see `content/library/README.md` for sources, licences and changes) |
 
 If an `en/` folder is missing or empty, English visitors see the Chinese files.
 
@@ -258,13 +268,15 @@ Lesson text in Markdown…
 | `audience` | `parent`, `student` or `all` (default). Decides which role sees it as recommended. |
 | `questions` | Suggested questions, separated by a vertical bar, shown at the end of the lesson. |
 | `draft` | `true` shows the "Draft · pending review" badge and notice. Delete the line once a lesson is approved. |
+| `group` | Reference documents only: collection name, e.g. `openstax`. Documents in one collection are listed together and can be chosen together under "Answer from". Add `lib.group.<name>` and `lib.credit.<name>` to `public/js/i18n.js` for its title and source note. |
+| `url` | Reference documents only: link to the original (`https://` only), shown as "Read the original". |
 
 ## The online demo
 
 The demo at [whynot-luo.github.io/unspoken-demo](https://whynot-luo.github.io/unspoken-demo/) is the same web app, built by `npm run build:demo` (`scripts/build-demo.js`) into `dist-demo/` with two additions:
 
 - `demo/demo-backend.js`, an in-browser stand-in for the server. It answers the app's `api/…` requests itself: no account, notes and progress kept in the visitor's browser, crisis screening as in the real app, and labelled sample text instead of AI answers.
-- The lessons as JSON files, since there is no server to read them from.
+- The lessons and reference library as JSON files, since there is no server to read them from.
 
 GitHub Actions (`.github/workflows/test-and-demo.yml`) runs the tests on every push and, when they pass on `main`, rebuilds and publishes the demo to GitHub Pages.
 
@@ -284,11 +296,11 @@ All endpoints return JSON. Everything except `GET /api/status`, `GET /api/me` an
 | `POST /api/me/password` | `{ current, next }` |
 | `DELETE /api/me` | `{ password }`: deletes the account and all its data |
 | `GET /api/courses?lang=zh` or `?lang=en` | Lessons with id, title, summary, order, audience, questions, draft and text. |
-| `GET /api/library?lang=zh` or `?lang=en` | Platform reference documents. |
+| `GET /api/library?lang=zh` or `?lang=en` | Platform reference documents (same fields as lessons, plus `group` and `url`). |
 | `GET /api/notes`, `PUT /api/notes/:id`, `DELETE /api/notes/:id` | The user's notes (`{ title, body, createdAt, updatedAt }`; up to 2,000 notes of up to 200,000 characters). |
 | `GET /api/docs`, `PUT /api/docs/:id`, `DELETE /api/docs/:id` | The user's uploaded materials (`{ title, name, text, addedAt }`; up to 50, each up to 300,000 characters). |
 | `GET /api/progress`, `PUT /api/progress/:courseId`, `DELETE /api/progress/:courseId` | Completed lessons. |
-| `POST /api/chat` | Grounded answer. Body: `question` (up to 1,000 characters), `sources` (1 to 8 items of `{ title, text }`, each text up to 2,000 characters), and optional `history`, `role` (`parent` or `student`) and `lang` (`zh` or `en`). |
+| `POST /api/chat` | Grounded answer. Body: `question` (up to 1,000 characters), `sources` (0 to 8 items of `{ title, text }`; with none, the model answers from general knowledge under the label, each text up to 2,000 characters), and optional `history`, `role` (`parent` or `student`) and `lang` (`zh` or `en`). |
 | `POST /api/assist` | AI writing help. Body: `task` (`points`, `gentle` or `feelings`), `text` (up to 3,000 characters), and optional `role` and `lang`. |
 
 The two AI endpoints stream the model's reply as server-sent events in the OpenAI `chat.completion.chunk` format, ending with `data: [DONE]`. Errors are JSON `{ "error": code }`:
@@ -335,7 +347,8 @@ public/                   the web app (plain ES modules, no build step)
 content/
   courses/                Chinese lessons (drafts) and a format guide
   courses/en/             English lessons (drafts)
-  library/                platform reference material (empty for now, with a format note)
+  library/                reference library: OpenStax Psychology 2e excerpts and NIMH guides (Chinese), README with sources
+  library/en/             the same documents in English
 deploy/                   server setup, update, service, HTTPS and backup files, and a guide
 scripts/
   admin.js                invites, users, password resets, deletion, backups
@@ -358,7 +371,7 @@ Vendor files are committed so the app runs without a CDN, since CDNs are unrelia
 npm test
 ```
 
-93 tests using Node's built-in test runner, with no extra packages. Each server test starts the app on a random port with a throwaway database (`test/helpers.js`).
+107 tests using Node's built-in test runner, with no extra packages. Each server test starts the app on a random port with a throwaway database (`test/helpers.js`).
 
 | Suite | Covers |
 |---|---|
@@ -367,16 +380,18 @@ npm test
 | `data.test.js` | Notes, uploads and progress per user; one account can never see or change another's data, even with the same ids; size limits |
 | `server.test.js` | Content in both languages, static files, path traversal, malformed URLs, security headers, chat and AI writing in test mode, crisis handling, validation, per-account AI limit |
 | `proxy.test.js` | Live mode against a fake model server: request format and API key, streaming, friendly errors that hide upstream details |
-| `retrieval.test.js` | Chinese and English tokenising, passage splitting, ranking, unrelated questions, follow-ups |
+| `retrieval.test.js` | Chinese and English tokenising, passage splitting, ranking, unrelated questions, single-topic questions, synonyms, follow-ups |
 | `safety.test.js` | Chinese and English crisis detection, false positives, hotline visibility, both languages present |
 | `i18n.test.js` | Both languages have the same keys and placeholders; every key used by the page exists |
 | `server-lib.test.js` | Front matter, content loading and language fallback, prompt building, rate limits, `.env` parsing |
+| `content.test.js` | Every reference document exists in both languages; every collection has a name and source note; no foreign helpline numbers or links in the material; search over the real material finds the right section for everyday questions and nothing for off-topic ones |
 
 ## Known limits
 
 - **No email.** Password resets go through the admin command; there is no self-service reset email yet.
 - **Manual payments.** Memberships are unlocked by hand after a payment is confirmed; there is no automatic WeChat Pay / Alipay integration yet (it needs a merchant account).
-- **Keyword search.** Questions worded very differently from the material can miss; embedding search would help.
+- **Keyword search.** Questions worded very differently from the material can miss (a small synonym list helps); embedding search would help more.
+- **Machine-translated references.** The Chinese reference library is an AI translation that has not been reviewed line by line, and the originals are written for US readers.
 - **Single server process.** Login throttling and AI limits are counted in memory and reset when the app restarts.
 - **Needs a connection.** Offline, the installed app opens and shows a notice, but reading lessons and notes needs the network.
 - **Unreviewed content.** Lessons, safety text and crisis keywords are drafts.
@@ -386,4 +401,9 @@ npm test
 
 Built by [WHYNOT-LUO](https://github.com/WHYNOT-LUO) with AI coding assistance.
 
-Released under the [MIT License](LICENSE). This covers the code and the draft lessons. The bundled libraries in `public/vendor/` keep their own licences, copied in `public/vendor/licenses/`: [marked](https://github.com/markedjs/marked) (MIT), [DOMPurify](https://github.com/cure53/DOMPurify) (MPL-2.0 or Apache-2.0), [mammoth.js](https://github.com/mwilliamson/mammoth.js) (BSD-2-Clause) and [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0).
+Released under the [MIT License](LICENSE). This covers the code and the draft lessons.
+
+The reference library in `content/library/` is not covered by the MIT licence:
+
+- **OpenStax collection:** excerpts from *[Psychology 2e](https://openstax.org/details/books/psychology-2e)* by Rose M. Spielman, William J. Jenkins and Marilyn D. Lovett, © Rice University (OpenStax), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Taken from the January 2026 version of [openstax/osbooks-psychology](https://github.com/openstax/osbooks-psychology) (commit `e061043`), which was released under CC BY 4.0; OpenStax moved the book to CC BY-NC-SA in March 2026, which does not affect copies already released under CC BY 4.0. Changes: selected sections only; figures, exercises, references, external links, US helpline numbers, the prenatal-development section and the detailed suicide sections removed; translated into Chinese by AI. The translations are shared under CC BY 4.0. OpenStax and Rice University do not endorse this project.
+- **NIMH collection:** health information from the [National Institute of Mental Health](https://www.nimh.nih.gov), in the public domain. Changes: images, external links, US helpline numbers and US-only sections removed; translated into Chinese by AI. NIMH does not endorse this project. The bundled libraries in `public/vendor/` keep their own licences, copied in `public/vendor/licenses/`: [marked](https://github.com/markedjs/marked) (MIT), [DOMPurify](https://github.com/cure53/DOMPurify) (MPL-2.0 or Apache-2.0), [mammoth.js](https://github.com/mwilliamson/mammoth.js) (BSD-2-Clause) and [pdf.js](https://github.com/mozilla/pdf.js) (Apache-2.0).

@@ -43,6 +43,29 @@ test("search returns nothing when the question is unrelated to the materials", (
   assert.deepEqual(search(index, "今天天气怎么样"), []);
 });
 
+test("a question with a single topic word still finds it", () => {
+  const many = [
+    ...Array.from({ length: 30 }, (_, i) => ({ id: `d${i}`, title: `t${i}`, text: `孩子和父母的日常第${i}篇` })),
+    { id: "att", title: "依恋", text: "依恋是婴儿和照顾者之间的情感联结。" },
+  ];
+  const index = buildIndex(many);
+  assert.equal(search(index, "什么是依恋")[0].docId, "att");
+  // a word found almost everywhere is not enough on its own
+  assert.deepEqual(search(index, "孩子游泳"), []);
+});
+
+test("everyday words find the materials' terms, and count once with them", () => {
+  const index = buildIndex([
+    { id: "bully", title: "攻击行为", text: "欺凌是儿童和青少年中常见的攻击行为。" },
+    { id: "other", title: "日常", text: "孩子和儿童都需要睡眠。" },
+  ]);
+  assert.equal(search(index, "孩子被霸凌怎么办")[0].docId, "bully");
+  // 孩子 and 儿童 are one word group, so "other" does not get two matches from them
+  assert.deepEqual(search(index, "孩子吃饭").map((h) => h.docId), []);
+  const en = buildIndex([{ id: "teen", title: "Adolescence", text: "Adolescents often argue with their parents." }]);
+  assert.equal(search(en, "Why do teenagers fight with their mom?")[0]?.docId, "teen");
+});
+
 test("search ignores filler words like 什么 and 怎么", () => {
   const index = buildIndex([{ id: "x", title: "t", text: "什么怎么为什么可以我们" }]);
   assert.deepEqual(search(index, "为什么我们可以怎么样"), []);

@@ -27,7 +27,7 @@ const zh = {
   "chat.sending": "回答中…",
   "chat.fine": "优先依据所选资料 · 不是心理咨询 ·",
   "chat.helpLink": "需要帮助",
-  "chat.intro1": "你可以问关于课程内容的问题，也可以先在“我的资料”里上传自己找到的资料，再把“回答依据”切换过去。",
+  "chat.intro1": "你可以问关于课程、心理学教材节选和心理健康科普资料的问题；也可以先在“我的资料”里上传自己找到的资料，再把“回答依据”切换过去。",
   "chat.intro2": "未言会优先根据所选资料回答并标出来源；资料没有涉及时，会用一般心理学知识补充，并明确标出。",
   "chat.general": "资料里没有找到相关内容，这条回答来自 AI 的一般知识，不来自课程资料，仅供参考。",
   "chat.sources": "依据的资料（点开可看原文）",
@@ -40,9 +40,10 @@ const zh = {
   "chat.noteSource": "问问未言，依据 {list}",
   "chat.copySources": "来源：{list}",
 
-  "scope.courses": "课程与平台参考资料",
+  "scope.courses": "全部：课程和参考资料",
+  "scope.wholeGroup": "整套资料",
+  "scope.mine": "我上传的资料",
   "scope.uploads": "我上传的全部资料",
-  "scope.upload": "我的资料：{title}",
 
   "kind.course": "课程",
   "kind.library": "参考资料",
@@ -104,6 +105,11 @@ const zh = {
   "lib.drop": "点击选择，或把文件拖到这里 · 支持 PDF、Word（.docx）、TXT、Markdown，单个不超过 15MB",
   "lib.empty": "还没有上传资料。",
   "lib.platform": "平台参考资料（由未言提供）",
+  "lib.group.openstax": "心理学教材节选：OpenStax《心理学》（第 2 版）",
+  "lib.group.nimh": "心理健康科普：美国国立精神卫生研究所（NIMH）",
+  "lib.credit.openstax": "节选自 OpenStax 出版的《Psychology 2e》（作者 Rose M. Spielman、William J. Jenkins、Marilyn D. Lovett），可在 <a href=\"https://openstax.org/details/books/psychology-2e\" target=\"_blank\" rel=\"noopener\">openstax.org</a> 免费阅读，按 <a href=\"https://creativecommons.org/licenses/by/4.0/deed.zh-hans\" target=\"_blank\" rel=\"noopener\">CC BY 4.0</a> 许可使用。未言做了这些改动：只收录部分章节，删去了配图、练习题、外部链接、美国的求助电话和个别小节，并由 AI 翻译成中文（未经人工逐句审校）。OpenStax 与莱斯大学没有参与本应用，也不为它背书。", // HTML
+  "lib.credit.nimh": "来自美国国立精神卫生研究所（NIMH）的公开科普资料（属于公有领域），原文见 <a href=\"https://www.nimh.nih.gov\" target=\"_blank\" rel=\"noopener\">nimh.nih.gov</a>。未言删去了图片、外部链接和美国的求助电话，并由 AI 翻译成中文（未经人工逐句审校）。NIMH 没有参与本应用，也不为它背书。这些资料用于了解知识，不是医疗建议。", // HTML
+  "lib.original": "阅读英文原文",
   "lib.chars": "{n} 字",
   "lib.view": "查看",
   "lib.hide": "收起",
@@ -299,7 +305,7 @@ const en = {
   "chat.sending": "Answering…",
   "chat.fine": "Answers from the selected material first · Not counselling ·",
   "chat.helpLink": "Get help",
-  "chat.intro1": "Ask anything about the courses. You can also upload your own materials in “My materials” and switch “Answer from” to them.",
+  "chat.intro1": "Ask about the courses, the psychology textbook excerpts or the mental health guides. You can also upload your own materials in “My materials” and switch “Answer from” to them.",
   "chat.intro2": "Unspoken answers from the selected material first and shows its sources; when the material doesn't cover something, it adds general psychology knowledge and says so.",
   "chat.general": "Nothing in the material matched, so this answer comes from the AI's general knowledge, not the course materials. Treat it as general information.",
   "chat.sources": "Sources (tap to read)",
@@ -312,9 +318,10 @@ const en = {
   "chat.noteSource": "Ask Unspoken, based on {list}",
   "chat.copySources": "Sources: {list}",
 
-  "scope.courses": "Courses and platform references",
+  "scope.courses": "Everything: courses and references",
+  "scope.wholeGroup": "The whole collection",
+  "scope.mine": "My uploads",
   "scope.uploads": "All my uploads",
-  "scope.upload": "My material: {title}",
 
   "kind.course": "Course",
   "kind.library": "Reference",
@@ -376,6 +383,11 @@ const en = {
   "lib.drop": "Click to choose, or drag files here · PDF, Word (.docx), TXT or Markdown, up to 15 MB each",
   "lib.empty": "No materials uploaded yet.",
   "lib.platform": "Platform references (provided by Unspoken)",
+  "lib.group.openstax": "Psychology textbook excerpts: OpenStax Psychology 2e",
+  "lib.group.nimh": "Mental health guides: US National Institute of Mental Health (NIMH)",
+  "lib.credit.openstax": "Excerpts from <i>Psychology 2e</i> by Rose M. Spielman, William J. Jenkins and Marilyn D. Lovett, published by OpenStax, free to read at <a href=\"https://openstax.org/details/books/psychology-2e\" target=\"_blank\" rel=\"noopener\">openstax.org</a>, used under <a href=\"https://creativecommons.org/licenses/by/4.0/\" target=\"_blank\" rel=\"noopener\">CC BY 4.0</a>. Changes by Unspoken: selected sections only, with figures, exercises, external links, US helpline numbers and a few subsections removed. The Chinese version is an AI translation that has not been reviewed line by line. OpenStax and Rice University are not involved with and do not endorse this app.", // HTML
+  "lib.credit.nimh": "Public-domain health information from the US National Institute of Mental Health (NIMH); originals at <a href=\"https://www.nimh.nih.gov\" target=\"_blank\" rel=\"noopener\">nimh.nih.gov</a>. Changes by Unspoken: images, external links and US helpline numbers removed. The Chinese version is an AI translation that has not been reviewed line by line. NIMH is not involved with and does not endorse this app. This is general information, not medical advice.", // HTML
+  "lib.original": "Read the original",
   "lib.chars": "{n} chars",
   "lib.view": "View",
   "lib.hide": "Hide",

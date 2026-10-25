@@ -122,6 +122,17 @@ test("loadDocs reads audience, suggested questions and draft flag", () => {
   assert.equal(b.draft, false);
 });
 
+test("loadDocs reads the collection group and keeps only https source links", () => {
+  const dir = mkdtempSync(join(tmpdir(), "unspoken-"));
+  writeFileSync(join(dir, "a.md"), "---\ntitle: A\ngroup: openstax\nurl: https://openstax.org/x\n---\nbody");
+  writeFileSync(join(dir, "b.md"), "---\ntitle: B\nurl: javascript:alert(1)\n---\nbody");
+  const [a, b] = loadDocs(dir);
+  assert.equal(a.group, "openstax");
+  assert.equal(a.url, "https://openstax.org/x");
+  assert.equal(b.group, "");
+  assert.equal(b.url, "");
+});
+
 test("buildMessages tells the model who the user is", () => {
   const sources = [{ title: "t", text: "x" }];
   assert.match(buildMessages({ question: "q", sources, role: "parent" }).at(-1).content, /家长/);

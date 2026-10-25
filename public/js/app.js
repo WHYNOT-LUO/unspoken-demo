@@ -122,12 +122,30 @@ function applyStaticText() {
   document.title = t("doc.title");
 }
 
-/** Courses and platform references in the current language (English falls back to Chinese). */
+/**
+ * Courses and platform references in the current language (English falls back to Chinese).
+ * The reference library is large, so it loads in the background without holding up the first screen.
+ */
 async function loadContent() {
   const lang = getLang();
-  const [courses, library] = await Promise.all([get(`/api/courses?lang=${lang}`), get(`/api/library?lang=${lang}`)]);
-  Object.assign(state, { courses, library });
+  state.courses = await get(`/api/courses?lang=${lang}`);
   rebuildIndex();
+  loadLibrary(lang);
+}
+
+async function loadLibrary(lang, attempt = 1) {
+  try {
+    const library = await get(`/api/library?lang=${lang}`);
+    if (lang !== getLang() || !state.user) return; // language changed or signed out while it was loading
+    state.library = library;
+    rebuildIndex();
+    renderLibrary();
+    renderScope();
+  } catch (err) {
+    if (!state.user || err.status === 401 || lang !== getLang()) return;
+    if (attempt < 3) setTimeout(() => loadLibrary(lang, attempt + 1), 3000 * attempt);
+    else toast(errorText(err), "error");
+  }
 }
 
 function renderAll() {
@@ -419,6 +437,18 @@ function openSaveDialog({ title, body, source }) {
 
 // ---------- library (uploads) ----------
 
+/** Platform references grouped by collection; ungrouped ones first. */
+function libraryGroups() {
+  const groups = new Map([["", []]]);
+  for (const d of state.library) {
+    if (!groups.has(d.group)) groups.set(d.group, []);
+    groups.get(d.group).push(d);
+  }
+  return [...groups].filter(([, docs]) => docs.length);
+}
+
+const groupLabel = (group) => (t(`lib.group.${group}`).startsWith("lib.") ? group : t(`lib.group.${group}`));
+
 function docItem(doc, { removable }) {
   const open = state.openDocId === doc.key;
   return `
@@ -428,10 +458,12 @@ function docItem(doc, { removable }) {
         <span class="doc-meta">${t("lib.chars", { n: doc.text.length.toLocaleString() })}${doc.addedAt ? ` · ${fmtDate(doc.addedAt)}` : ""}</span>
         <span class="doc-actions">
           <button class="ghost small" data-act="toggle">${open ? t("lib.hide") : t("lib.view")}</button>
-          ${removable ? `<button class="primary small" data-act="ask">${t("lib.ask")}</button><button class="danger-btn small" data-act="delete">${t("common.delete")}</button>` : ""}
+          <button class="primary small" data-act="ask">${t("lib.ask")}</button>
+          ${removable ? `<button class="danger-btn small" data-act="delete">${t("common.delete")}</button>` : ""}
         </span>
       </div>
       ${open ? `<div class="doc-preview">${esc(doc.text.slice(0, 4000))}${doc.text.length > 4000 ? "\n……" : ""}</div>` : ""}
+      ${open && doc.url ? `<a class="doc-source" href="${esc(doc.url)}" target="_blank" rel="noopener">${t("lib.original")}</a>` : ""}
     </li>`;
 }
 
@@ -439,7 +471,14 @@ function renderLibrary() {
   const el = $("#view-library");
   const uploads = state.uploads.map((d) => docItem({ ...d, key: `upload:${d.id}` }, { removable: true })).join("");
   const loading = state.loadingFiles.map((n) => `<li class="doc loading">${esc(t("lib.loading", { n }))}</li>`).join("");
-  const platform = state.library.map((d) => docItem({ ...d, key: `library:${d.id}` }, { removable: false })).join("");
+  const platform = libraryGroups()
+    .map(
+      ([group, docs]) => `
+    <h2 class="section-title">${group ? esc(groupLabel(group)) : t("lib.platform")}</h2>
+    ${group && !t(`lib.credit.${group}`).startsWith("lib.") ? `<p class="hint credit">${t(`lib.credit.${group}`)}</p>` : ""}
+    <ul class="doc-list">${docs.map((d) => docItem({ ...d, key: `library:${d.id}` }, { removable: false })).join("")}</ul>`
+    )
+    .join("");
 
   el.innerHTML = `
     <div class="view-head"><h1>${t("lib.title")}</h1></div>
@@ -450,7 +489,7 @@ function renderLibrary() {
       <input type="file" id="fileInput" accept="${ACCEPT}" multiple>
     </label>
     ${uploads || loading ? `<ul class="doc-list">${loading}${uploads}</ul>` : `<div class="empty"><p>${t("lib.empty")}</p></div>`}
-    ${platform ? `<h2 class="section-title">${t("lib.platform")}</h2><ul class="doc-list">${platform}</ul>` : ""}`;
+    ${platform}`;
 }
 
 async function addFiles(files) {
@@ -511,7 +550,7 @@ libraryEl.addEventListener("click", async (e) => {
     state.openDocId = state.openDocId === key ? null : key;
     renderLibrary();
   } else if (act === "ask") {
-    state.scope = `upload:${id}`;
+    state.scope = key;
     renderScope();
     setView("chat");
     if (!isPhone()) $("#question").focus();
@@ -844,20 +883,31 @@ notesEl.addEventListener("click", async (e) => {
 
 // ---------- chat ----------
 
+/** "Answer from" choices, in groups: everything, each reference collection, the user's uploads. */
 function scopeOptions() {
-  const opts = [{ value: "courses", label: t("scope.courses") }];
-  if (state.uploads.length) {
-    opts.push({ value: "uploads", label: t("scope.uploads") });
-    for (const d of state.uploads) opts.push({ value: `upload:${d.id}`, label: t("scope.upload", { title: d.title }) });
+  const groups = [{ label: "", options: [{ value: "courses", label: t("scope.courses") }] }];
+  for (const [group, docs] of libraryGroups()) {
+    if (!group) continue;
+    groups.push({
+      label: groupLabel(group),
+      options: [{ value: `group:${group}`, label: t("scope.wholeGroup") }, ...docs.map((d) => ({ value: `library:${d.id}`, label: d.title }))],
+    });
   }
-  return opts;
+  if (state.uploads.length) {
+    groups.push({
+      label: t("scope.mine"),
+      options: [{ value: "uploads", label: t("scope.uploads") }, ...state.uploads.map((d) => ({ value: `upload:${d.id}`, label: d.title }))],
+    });
+  }
+  return groups;
 }
 
 function renderScope() {
-  const opts = scopeOptions();
-  if (!opts.some((o) => o.value === state.scope)) state.scope = "courses";
-  $("#scope").innerHTML = opts
-    .map((o) => `<option value="${esc(o.value)}" ${o.value === state.scope ? "selected" : ""}>${esc(o.label)}</option>`)
+  const groups = scopeOptions();
+  if (!groups.some((g) => g.options.some((o) => o.value === state.scope))) state.scope = "courses";
+  const option = (o) => `<option value="${esc(o.value)}" ${o.value === state.scope ? "selected" : ""}>${esc(o.label)}</option>`;
+  $("#scope").innerHTML = groups
+    .map((g) => (g.label ? `<optgroup label="${esc(g.label)}">${g.options.map(option).join("")}</optgroup>` : g.options.map(option).join("")))
     .join("");
 }
 
@@ -868,6 +918,10 @@ function scopeDocIds() {
     return [...state.courses.map((d) => `course:${d.id}`), ...state.library.map((d) => `library:${d.id}`)];
   }
   if (state.scope === "uploads") return state.uploads.map((d) => `upload:${d.id}`);
+  if (state.scope.startsWith("group:")) {
+    const group = state.scope.slice(6);
+    return state.library.filter((d) => d.group === group).map((d) => `library:${d.id}`);
+  }
   return [state.scope];
 }
 
