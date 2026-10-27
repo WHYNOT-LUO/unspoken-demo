@@ -107,14 +107,14 @@ function chatLines({ sources, lang }) {
       "**Demo:** no AI is called here, so this is sample text.\n\n",
       `For your question, Unspoken found ${sources.length} passage(s) in the material:\n\n`,
       ...sources.map((s, i) => `- [${i + 1}] “${s.title}”\n`),
-      "\nIn the real app, the AI answers only from these passages and cites them by number, like [1]. Open the sources below to read them.",
+      "\nIn the real app, the AI answers from these passages first and cites them by number, like [1]; anything beyond them is labelled as general knowledge. Open the sources below to read them.",
     ];
   }
   return [
     "**演示版：**这里不会调用 AI，下面是示例文字。\n\n",
     `未言为你的问题在资料里找到了 ${sources.length} 段内容：\n\n`,
     ...sources.map((s, i) => `- [${i + 1}] 《${s.title}》\n`),
-    "\n在正式版里，AI 只根据这些内容回答，并像 [1] 这样标注来源。可以点开下面的资料看原文。",
+    "\n在正式版里，AI 优先根据这些内容回答，并像 [1] 这样标注来源；资料以外的补充会标明是一般知识。可以点开下面的资料看原文。",
   ];
 }
 

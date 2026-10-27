@@ -940,17 +940,26 @@ function withCites(text, count) {
   return text.replace(/\[(\d{1,2})\]/g, (m, n) => (Number(n) >= 1 && Number(n) <= count ? `<sup class="cite">${n}</sup>` : m));
 }
 
+/** Sources the finished answer cites as [n], keeping their numbers. While the answer streams in, all of them. */
+function shownSources(m) {
+  const all = m.sources.map((s, i) => ({ ...s, n: i + 1 }));
+  if (m.pending) return all;
+  const cited = new Set([...String(m.content).matchAll(/\[(\d{1,2})\]/g)].map((x) => Number(x[1])));
+  return all.filter((s) => cited.has(s.n));
+}
+
 function messageHtml(m, i) {
   if (m.role === "user") return `<div class="msg user">${esc(m.content)}</div>`;
   if (m.kind === "crisis") return `<div class="msg">${crisisHtml()}<small class="hint">${t("chat.notSent")}</small></div>`;
   if (m.kind === "notice") return `<div class="msg notice">${esc(t(m.key))}</div>`;
   if (m.kind === "error") return `<div class="msg error">${esc(m.key ? t(m.key) : m.content)}</div>`;
 
-  const sources = m.sources
+  const shown = shownSources(m);
+  const sources = shown
     .map(
-      (s, n) => `
+      (s) => `
       <details class="src">
-        <summary><span>[${n + 1}] ${esc(quote(s.title))}</span><span class="kind">${t(`kind.${s.kind}`)}</span></summary>
+        <summary><span>[${s.n}] ${esc(quote(s.title))}</span><span class="kind">${t(`kind.${s.kind}`)}</span></summary>
         <blockquote>${esc(s.text)}</blockquote>
       </details>`
     )
@@ -960,7 +969,7 @@ function messageHtml(m, i) {
       <div class="prose">${m.content ? md(withCites(m.content, m.sources.length)) : ""}</div>
       ${m.pending ? `<span class="typing" data-label="${esc(t("chat.sending"))}"></span>` : ""}
       ${
-        m.sources.length
+        shown.length
           ? `<div class="sources"><span class="sources-label">${t("chat.sources")}</span>${sources}</div>`
           : `<p class="general-note">${t("chat.general")}</p>`
       }
@@ -1160,7 +1169,7 @@ $("#messages").addEventListener("click", async (e) => {
   if (!btn) return;
   const m = state.messages[Number(btn.dataset.i)];
   if (!m) return;
-  const sourceList = m.sources.map((s, n) => `[${n + 1}] ${quote(s.title)}`).join(" ");
+  const sourceList = shownSources(m).map((s) => `[${s.n}] ${quote(s.title)}`).join(" ");
   if (btn.dataset.act === "save") {
     openSaveDialog({
       title: m.question,

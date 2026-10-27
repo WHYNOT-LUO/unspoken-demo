@@ -216,14 +216,14 @@ function mockChatLines({ sources, lang }) {
       "[Test mode: no AI model connected. This is not a real answer.]\n\n",
       `Found ${sources.length} passage(s) for this question:\n\n`,
       ...sources.map((s, i) => `- [${i + 1}] “${s.title}”\n`),
-      "\nOnce a model is connected, the AI answers only from these passages and cites them by number.",
+      "\nOnce a model is connected, the AI answers from these passages first and cites them by number; anything beyond them is labelled as general knowledge.",
     ];
   }
   return [
     "【测试模式：未连接 AI 模型，以下不是真实回答】\n\n",
     `系统为这个问题找到了 ${sources.length} 段资料：\n\n`,
     ...sources.map((s, i) => `- [${i + 1}] 《${s.title}》\n`),
-    "\n连接模型后，AI 会只根据这些资料作答，并标注来源编号。",
+    "\n连接模型后，AI 会优先根据这些资料作答并标注来源编号；资料以外的补充会标明是一般知识。",
   ];
 }
 

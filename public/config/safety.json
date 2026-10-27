@@ -2,11 +2,11 @@
   "_review": "DRAFT. The messages, disclaimers and keyword list must be reviewed by a qualified person before any real users see them. A hotline is shown only when verified is true and number is filled in. Verify every number against an official source first.",
   "zh": {
     "disclaimer": "未言是一个情绪教育学习工具，帮助你理解情绪和关系。它不是心理咨询或治疗，也不能代替专业人士的帮助。AI 的回答优先依据课程和你上传的资料；资料没有涉及时会用一般知识补充并注明，可能有不准确的地方。",
-    "message": "你刚才写下的话，让我们很在意你的安全。你不需要一个人扛着。\n\n如果你有伤害自己的想法，或者正在受到伤害，请马上告诉一个你信任的大人，比如家人、老师或学校的心理老师，或者拨打下面的电话。\n\n如果现在有紧急危险，请立即拨打 110 或 120。"
+    "message": "你刚才写下的话，让我们很在意你的安全。你不需要一个人扛着。\n\n如果你有伤害自己的想法，或者正在受到伤害，请马上告诉一个你信任的大人，比如家人、老师或学校的心理老师，或者拨打下面的电话。\n\n如果是朋友告诉你他有危险的想法，请不要替他保密，马上告诉一个信任的大人。这不是背叛，而是在保护他。\n\n如果现在有紧急危险，请立即拨打 110 或 120。"
   },
   "en": {
     "disclaimer": "Unspoken is an emotional education tool that helps you understand feelings and relationships. It is not counselling or therapy, and it cannot replace help from a professional. AI answers draw on the courses and your uploaded materials first; when those don't cover something, the AI adds general knowledge and says so. Answers may not be fully accurate.",
-    "message": "What you just wrote makes us care about your safety. You don't have to carry this alone.\n\nIf you are thinking about hurting yourself, or someone is hurting you, please tell an adult you trust right away, such as a family member, a teacher or your school counsellor, or call one of the numbers below.\n\nIf you are in immediate danger, call 110 (police) or 120 (ambulance) now."
+    "message": "What you just wrote makes us care about your safety. You don't have to carry this alone.\n\nIf you are thinking about hurting yourself, or someone is hurting you, please tell an adult you trust right away, such as a family member, a teacher or your school counsellor, or call one of the numbers below.\n\nIf a friend has told you they are thinking about hurting themselves, please don't keep it secret. Tell a trusted adult right away. That isn't betraying them; it is protecting them.\n\nIf you are in immediate danger, call 110 (police) or 120 (ambulance) now."
   },
   "hotlines": [
     { "name": { "zh": "报警电话", "en": "Police" }, "number": "110", "verified": true },
@@ -18,12 +18,16 @@
     "自杀", "想死", "不想活", "活不下去", "活着没意思", "轻生", "寻死", "去死",
     "自残", "自伤", "割腕", "割手", "跳楼", "跳河", "安眠药", "结束生命", "结束自己",
     "了结自己", "伤害自己", "消失算了",
+    "自我伤害", "伤害我自己", "割脉", "割自己", "划手", "划自己", "上吊", "烧炭", "遗书",
+    "死了算了", "不如死了", "紫砂",
     "家暴", "虐待", "被打", "打我了", "性侵", "猥亵", "强奸", "被摸",
+    "爸打我", "妈打我", "爸爸打我", "妈妈打我", "他打我", "她打我", "揍我", "性骚扰", "被侵犯", "裸照",
 
     "suicide", "suicidal", "kill myself", "killing myself", "end my life", "end it all",
     "want to die", "wanna die", "don't want to live", "dont want to live", "no reason to live",
     "hurt myself", "hurting myself", "harm myself", "self harm", "self harming",
-    "cut myself", "cutting myself", "overdose",
+    "cut myself", "cutting myself", "overdose", "kms", "unalive", "take my own life", "hang myself",
+    "slit my wrists",
     "abuse", "abused", "abusing me", "hits me", "hit me", "beating me", "beat me up",
     "domestic violence", "rape", "raped", "sexual assault", "sexually assaulted",
     "molest", "molested", "touched me inappropriately"

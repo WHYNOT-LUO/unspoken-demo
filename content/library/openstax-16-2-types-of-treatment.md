@@ -122,7 +122,7 @@ CBT（认知行为疗法）的效果如何？一位来访者这样评价他的�
 | 抗抑郁药（anti-depressants） | 抑郁症，并越来越多地用于焦虑症 | Paxil、Prozac、Zoloft（选择性5-羟色胺再摄取抑制剂，[SSRIs]）；Tofranil和Elavil（三环类药物） | 改变5-羟色胺和去甲肾上腺素（norepinephrine）等神经递质的水平 | SSRIs：头痛、恶心、体重增加、嗜睡、性欲减退 三环类药物：口干、便秘、视物模糊、嗜睡、性欲减退、自杀风险增加 |
 | 抗焦虑药（anti-anxiety agents） | 强迫症（OCD）、创伤后应激障碍（PTSD）、惊恐障碍和社交恐惧症中出现的焦虑和激越 | Xanax、Valium、Ativan（苯二氮䓬类，Benzodiazepines）Buspar（非苯二氮䓬类） | 抑制中枢神经系统活动 | 嗜睡、头晕、头痛、疲劳、头昏眼花 |
 | 心境稳定剂（mood stabilizers） | 双相障碍（bipolar disorder） | Lithium、Depakote、Lamictal、Tegretol | 治疗躁狂发作以及抑郁发作 | 过度口渴、心律不齐、瘙痒/皮疹、肿胀（面部、口腔和四肢）、恶心、食欲丧失 |
-| 兴奋剂（stimulants） | 注意缺陷/多动障碍（ADHD） | Adderall、Ritalin | 改善专注于一项任务和保持注意力的能力 | 食欲下降、入睡困难、胃痛、头痛 |
+| 中枢兴奋剂（stimulants） | 注意缺陷/多动障碍（ADHD） | Adderall、Ritalin | 改善专注于一项任务和保持注意力的能力 | 食欲下降、入睡困难、胃痛、头痛 |
 
 另一种仍在继续使用、尽管不常用的生物学基础治疗是电休克疗法（electroconvulsive therapy，ECT）（以前以其不科学的名称“电击疗法”而为人所知）。它涉及使用电流诱发癫痫发作，以帮助减轻严重抑郁症的影响。确切机制尚不清楚，尽管它确实有助于缓解对传统药物治疗无反应的严重抑郁症患者的症状（Pagnin, de Queiroz, Pini, & Cassano, 2004）。约85%接受ECT治疗的人有所改善（Reti, n.d.）。然而，与反复实施相关的记忆丧失导致其被作为最后手段使用（Donahue, 2000; Prudic, Peyser, & Sackeim, 2000）。一种更近期的替代方法是经颅磁刺激（transcranial magnetic stimulation，TMS），这是一种于2008年获得FDA批准的疗法，利用磁场刺激大脑中的神经细胞以改善抑郁症状；当其他治疗无效时使用（Mayo Clinic, 2012）。
 

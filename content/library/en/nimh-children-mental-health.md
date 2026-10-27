@@ -18,9 +18,7 @@ Distinguishing between challenging behaviors and emotions that are a part of nor
 
 ## When might children benefit from an evaluation?
 
-Younger children
-
-Older children
+**Younger children**
 
 - Have frequent tantrums or are irritable much of the time
 
@@ -37,6 +35,8 @@ Older children
 - Struggle academically or have experienced a recent decline in grades
 
 - Repeat actions or check things many times (for example, repeatedly checking to make sure a door is locked) out of fear that something bad may happen
+
+**Older children**
 
 - Have lost interest in things that they used to enjoy
 

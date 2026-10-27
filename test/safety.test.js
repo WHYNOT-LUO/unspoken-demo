@@ -19,6 +19,13 @@ test("ignores spaces and punctuation inserted between characters", () => {
   assert.equal(detectCrisis("不想-活-了", config.keywords), true);
 });
 
+test("detects everyday and online ways of saying it", () => {
+  for (const text of ["我爸爸打我", "我会划手臂", "想紫砂", "我想伤害我自己", "他要我发裸照", "I want to kms"]) {
+    assert.equal(detectCrisis(text, config.keywords), true, text);
+  }
+  assert.equal(detectCrisis("你可以打我电话吗", config.keywords), false);
+});
+
 test("ordinary questions are not flagged", () => {
   assert.equal(detectCrisis("父母总问我钱花在哪里，我该怎么沟通？", config.keywords), false);
   assert.equal(detectCrisis("为什么不建议早恋", config.keywords), false);

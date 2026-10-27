@@ -133,6 +133,12 @@ test("loadDocs reads the collection group and keeps only https source links", ()
   assert.equal(b.url, "");
 });
 
+test("buildMessages tells the model to skip unrelated sources and to label general knowledge in the answer's language", () => {
+  assert.match(SYSTEM_PROMPT, /和问题无关的资料不要引用/);
+  const en = buildMessages({ question: "q", sources: [], lang: "en" }).at(-1).content;
+  assert.match(en, /General knowledge \(not from the course materials\)/);
+});
+
 test("buildMessages tells the model who the user is", () => {
   const sources = [{ title: "t", text: "x" }];
   assert.match(buildMessages({ question: "q", sources, role: "parent" }).at(-1).content, /家长/);

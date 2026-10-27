@@ -20,7 +20,7 @@ url: https://...    # 原文地址（可选），页面上会显示“阅读英�
 
 | group | 来源 | 许可 | 改动 |
 |---|---|---|---|
-| `openstax` | OpenStax《Psychology 2e》（Rose M. Spielman、William J. Jenkins、Marilyn D. Lovett 著），16 个小节 | CC BY 4.0（取自 github.com/openstax/osbooks-psychology 2026 年 1 月的版本，提交 `e061043`。OpenStax 于 2026 年 3 月把这本书的许可改为 CC BY-NC-SA；在此之前发布的版本仍按 CC BY 4.0 授权，这一许可不可撤销） | 只收录部分小节；删去配图、练习题、参考文献、外部链接、美国求助电话，以及“产前发育”和关于自杀的详细小节；中文为 AI 翻译，未经人工逐句审校 |
-| `nimh` | 美国国立精神卫生研究所（NIMH）科普手册 9 份，取自 nimh.nih.gov（2026 年 10 月） | 公有领域（NIMH 版权政策：可复制、可改编，但不得误导，需注明来源，不得使用图片） | 删去图片、外部链接、美国求助电话和“临床试验”“如何找到帮助”等美国专用小节；中文为 AI 翻译，未经人工逐句审校 |
+| `openstax` | OpenStax《Psychology 2e》（Rose M. Spielman、William J. Jenkins、Marilyn D. Lovett 著），16 个小节 | CC BY 4.0（取自 github.com/openstax/osbooks-psychology 2026 年 1 月的版本，提交 `e061043`。OpenStax 于 2026 年 3 月把这本书的许可改为 CC BY-NC-SA；在此之前发布的版本仍按 CC BY 4.0 授权，这一许可不可撤销） | 只收录部分小节；删去配图、练习题、参考文献、外部链接、美国求助电话，以及“产前发育”和关于自杀的详细小节；个别求助建议按国内情况调整；中文为 AI 翻译，经 AI 逐段核对并修正，未经人工逐句审校 |
+| `nimh` | 美国国立精神卫生研究所（NIMH）科普手册 9 份，取自 nimh.nih.gov（2026 年 10 月） | 公有领域（NIMH 版权政策：可复制、可改编，但不得误导，需注明来源，不得使用图片） | 删去图片、外部链接、美国求助电话和“临床试验”“如何找到帮助”等美国专用小节；中文版把美国特有的就医和学校做法（如初级保健医生、IEP）改成国内说法；中文为 AI 翻译，经 AI 逐段核对并修正，未经人工逐句审校 |
 
 更换或增加有版权的书籍前，需要先取得出版方的授权。
