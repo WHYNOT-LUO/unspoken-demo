@@ -12,6 +12,8 @@ Often we only say "annoyed", "upset" or "I'm fine". But "annoyed" might really b
 
 When we can tell which emotion we are feeling and find a more precise word for it, the emotion turns from a tangled mess into something we can see clearly and deal with. It also helps other people understand us.
 
+> **From the book:** Psychiatrist Daniel J. Siegel and psychotherapist Tina Payne Bryson call this "Name It to Tame It": helping a child tell the story of what happened and put a name to the feeling calms big emotions. (Siegel and Bryson, *The Whole-Brain Child*, 2011, chapter 2, Whole-Brain Strategy #2)
+
 ## Some useful feeling words
 
 - **Sad**: low, hurt, lonely, disappointed, heartbroken
@@ -40,6 +42,8 @@ For example: "I feel hurt, because I've been trying really hard, and I hope you'
 
 This pattern talks about **your own feelings and needs** rather than blaming the other person, so it is easier for them to hear.
 
+> **From the book:** This pattern draws on Nonviolent Communication. Marshall B. Rosenberg describes four parts of expressing ourselves: observations (what happened), feelings, needs and requests. "I feel... because... and I hope..." is a simplified version. (Rosenberg, *Nonviolent Communication*, 3rd ed.)
+
 ## When an emotion is very strong
 
 - Pause, take a few deep breaths, and slowly count to ten.
@@ -50,3 +54,10 @@ This pattern talks about **your own feelings and needs** rather than blaming the
 
 - Think of something small that happened today, and try writing one sentence with "I feel... because... and I hope...".
 - Where in your body do your emotions usually show up first?
+
+## Sources
+
+*These show where the ideas in this lesson come from. This lesson is still awaiting professional review.*
+
+- Daniel J. Siegel, Tina Payne Bryson. *The Whole-Brain Child: 12 Revolutionary Strategies to Nurture Your Child's Developing Mind*. New York: Delacorte Press, 2011.
+- Marshall B. Rosenberg. *Nonviolent Communication: A Language of Life* (3rd ed.). Encinitas, CA: PuddleDancer Press, 2015.

@@ -28,13 +28,24 @@ Neither side means any harm, but the love gets "bent out of shape" on the way.
 - **Allow small mistakes**: wasting a little money is part of learning to manage it.
 - **Watch your tone**: the same question asked with curiosity and asked with blame sounds completely different to a child.
 
+> **From the book:** Child psychologist Haim G. Ginott wrote: "An allowance is not a reward for good behavior nor a payment for chores." He saw it as an educational device with a distinct purpose: giving children experience. (Ginott, *Between Parent and Child*, 1965)
+
 ## For children
 
 - Try to understand that your parents' questions often come from worry.
 - Say how you feel, calmly: "Every time you ask like that, I feel like I've done something wrong, and it upsets me."
 - Suggest a solution: "Could we set some rules for my pocket money? Then you won't have to worry, and I won't have to explain every time."
 
+> **What the law says:** China's Family Education Promotion Law (Article 17) asks parents to respect children's right to take part in family matters and to express their views, and to communicate as equals, with respect, understanding and encouragement. Agreeing on pocket-money rules together is one way to do this.
+
 ## Reflection
 
 - **Children**: When did you last feel guilty about spending money? What did you most wish your parents had said?
 - **Parents**: When you ask your child about their spending, what are you really worried about? How could you say that worry directly?
+
+## Sources
+
+*These show where the ideas in this lesson come from. This lesson is still awaiting professional review.*
+
+- Haim G. Ginott. *Between Parent and Child: New Solutions to Old Problems*. New York: Macmillan, 1965.
+- Family Education Promotion Law of the People's Republic of China (2021), Article 17.

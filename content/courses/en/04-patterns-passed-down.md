@@ -24,6 +24,8 @@ You don't need to change everything at once. Start by trying to **notice**:
 
 Once we can see a pattern, we have a choice: we can carry on, or we can try something different.
 
+> **From the book:** Psychiatrist Daniel J. Siegel and early-childhood educator Mary Hartzell ask how making sense of our lives helps our children. Their answer: "By freeing ourselves from the constraints of our past", we can offer our children something different. (Siegel and Hartzell, *Parenting from the Inside Out*, 2003)
+
 ## Breaking the pattern: small ways to do it differently
 
 - **Pause first**: when emotions rise, give yourself a few seconds before deciding what to say.
@@ -39,7 +41,18 @@ Repairing matters as much as not making mistakes. A parent can say:
 
 A sincere apology shows your child that when something goes wrong in a relationship, it can be repaired. It also shows them how to face their own mistakes.
 
+> **From the book:** Siegel and Hartzell devote a whole chapter to "rupture and repair": after a break in the connection between parent and child, the parent can reach out to reconnect and repair it. (*Parenting from the Inside Out*, chapter 8)
+
+> **What the law says:** China's Family Education Promotion Law (Article 17) asks parents to teach by example as well as by words, and describes parents and children growing together. Changing how you speak is teaching by example.
+
 ## Reflection
 
 - Write down one thing you hated hearing as a child, but now notice yourself saying too.
 - If you expressed the same worry in a different way, what would you say?
+
+## Sources
+
+*These show where the ideas in this lesson come from. This lesson is still awaiting professional review.*
+
+- Daniel J. Siegel, Mary Hartzell. *Parenting from the Inside Out: How a Deeper Self-Understanding Can Help You Raise Children Who Thrive*. New York: Tarcher, 2003.
+- Family Education Promotion Law of the People's Republic of China (2021), Article 17.

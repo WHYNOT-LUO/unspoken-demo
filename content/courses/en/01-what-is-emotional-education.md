@@ -19,11 +19,15 @@ These are **emotional skills**. They include:
 
 Like reading and writing, emotional skills are not something we are born with. We need someone to show us, and we need practice.
 
+> **What research says:** CASEL, a US organisation that studies social and emotional learning, groups these skills into five areas: self-awareness, self-management, social awareness, relationship skills and responsible decision-making. It notes that they "can be taught and applied at various developmental stages from childhood to adulthood". (CASEL framework)
+
 ## Why emotions often come last
 
 In a highly competitive environment, schools and families focus on things that can be counted: marks, rankings, exam results. Emotions and mental health are hard to measure in the short term, so they are often pushed to the back.
 
 Many families are also used to putting the group first. Someone who talks about their own feelings may be seen as "immature" or "causing trouble". Over time, many people stop saying "I love you", and stop saying "I'm sad". Sometimes love is clearly there, but it comes out as nagging, criticism or silence.
+
+> **From the book:** "Most of us grew up speaking a language that encourages us to label, compare, demand, and pronounce judgments rather than to be aware of what we are feeling and needing." (Marshall B. Rosenberg, *Nonviolent Communication*, 3rd ed., p. 23)
 
 ## What emotional education aims to do
 
@@ -33,7 +37,18 @@ Emotional education is not about making anyone "perfect", and it is not about de
 2. find better ways to show that they care;
 3. feel safe in their relationships, and learn to protect themselves.
 
+> **What the law says:** China's Law on the Protection of Minors (Article 16) requires parents to pay attention to children's physical and psychological condition and emotional needs, and the Family Education Promotion Law (Article 16) lists attention to children's mental health as part of family education.
+
 ## Reflection
 
 - When did you last feel a very strong emotion? How did you handle it?
 - In your family, which feelings are "OK to talk about", and which are "better left unsaid"?
+
+## Sources
+
+*These show where the ideas in this lesson come from. This lesson is still awaiting professional review.*
+
+- CASEL. *What Is the CASEL Framework?* https://casel.org/fundamentals-of-sel/what-is-the-casel-framework/
+- Marshall B. Rosenberg. *Nonviolent Communication: A Language of Life* (3rd ed.). Encinitas, CA: PuddleDancer Press, 2015.
+- Law of the People's Republic of China on the Protection of Minors (revised 2020, amended 2024), Article 16.
+- Family Education Promotion Law of the People's Republic of China (2021), Article 16.

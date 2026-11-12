@@ -19,6 +19,8 @@ questions: 喜欢一个人是不是错的？ | 为什么大人不建议过早谈
 - **容易被要求做自己还没准备好的事**：有时候，为了不失去对方，人会勉强自己。
 - **有些“恋爱”其实是在找温暖**：如果在家里很少感到被关心，就会特别渴望从别人那里得到在乎，也更容易被伤害。
 
+> **研究怎么说：** 青少年的大脑仍在发育。负责判断、冲动控制和计划的额叶，要到成年早期才逐渐成熟，这可能是青春期更容易冒险和情绪爆发的原因之一。——OpenStax《心理学》（第 2 版）9.3 节（全文可在“我的资料”的平台参考资料中阅读）
+
 ## 先问问自己
 
 如果你正在喜欢一个人，或者正在一段关系里，可以试着问问自己：
@@ -26,6 +28,10 @@ questions: 喜欢一个人是不是错的？ | 为什么大人不建议过早谈
 - 我喜欢的是这个人，还是“有人在乎我”的感觉？
 - 在这段关系里，我觉得轻松、被尊重吗？
 - 我有没有因为对方，放弃了自己原本喜欢的事情和朋友？
+
+> **研究怎么说：** 心理学家埃里克森认为，青春期的核心任务是回答“我是谁？”“我想成为谁？”（本平台译）；在这个阶段，同伴关系会变得非常重要。——OpenStax《心理学》（第 2 版）9.3 节
+
+> **国际指南怎么说：** 联合国教科文组织等机构编写的《国际性教育技术指导纲要》建议，12–15 岁的学生要学会分辨爱、友谊、迷恋和性吸引带来的不同感受，并学会管理这些情绪；认识到恋爱关系中的不平等和权力差异可能带来伤害；在同伴压力面前，也要学会坚持自己的决定。——UNESCO 等，*International Technical Guidance on Sexuality Education*（修订版，2018），第 41、59 页
 
 ## 很想被人在乎的时候
 
@@ -41,3 +47,10 @@ questions: 喜欢一个人是不是错的？ | 为什么大人不建议过早谈
 
 - 你觉得“被在乎”是什么样的感觉？最近一次感受到它是什么时候？
 - 除了恋爱，你还可以从哪里得到支持和温暖？
+
+## 参考资料
+
+*这些资料用来说明本课观点的出处。引号内的外文书句子为本平台翻译。本课仍在等待专业人士审核。*
+
+- Rose M. Spielman, William J. Jenkins, Marilyn D. Lovett. *Psychology 2e*, section 9.3 "Stages of Development". OpenStax, CC BY 4.0. https://openstax.org/books/psychology-2e/pages/9-3-stages-of-development
+- UNESCO, UNAIDS, UNFPA, UNICEF, UN Women, WHO. *International Technical Guidance on Sexuality Education: An Evidence-Informed Approach* (revised ed.). Paris: UNESCO, 2018. https://www.unfpa.org/sites/default/files/pub-pdf/ITGSE.pdf 中文版名称：《国际性教育技术指导纲要》（修订版）。

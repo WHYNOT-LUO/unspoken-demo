@@ -10,6 +10,7 @@ const LIB = join(fileURLToPath(new URL("..", import.meta.url)), "content", "libr
 const zh = loadDocs(LIB);
 const en = loadDocs(join(LIB, "en"));
 const COURSES = join(LIB, "..", "courses");
+const LABELS = /^> \*\*(书里怎么说|研究怎么说|国际指南怎么说|法律怎么说|From the book|What research says|International guidance|What the law says)[:：]\*\*/gm;
 
 test("every reference document has an English version with the same id and collection", () => {
   assert.deepEqual(
@@ -61,4 +62,22 @@ test("everyday questions find the right part of the real material", () => {
   assert.ok(search(zhIndex, "孩子早恋了怎么办").some((h) => h.docId === "course:06-why-slow-down-on-dating"));
   assert.equal(top(enIndex, "What is attachment?"), "library:openstax-9-3-stages-of-development");
   assert.equal(top(enIndex, "My kid is being bullied"), "library:openstax-12-6-aggression");
+});
+
+test("every lesson ends with its sources, in both languages, with matching callouts", () => {
+  const zhLessons = loadDocs(COURSES);
+  const enLessons = loadDocs(join(COURSES, "en"));
+  assert.deepEqual(enLessons.map((d) => d.id), zhLessons.map((d) => d.id));
+  for (const [i, zhDoc] of zhLessons.entries()) {
+    const enDoc = enLessons[i];
+    assert.match(zhDoc.text, /\n## 参考资料\n/, zhDoc.id);
+    assert.match(enDoc.text, /\n## Sources\n/, enDoc.id);
+    const zhCount = (zhDoc.text.match(LABELS) || []).length;
+    assert.ok(zhCount >= 2, `${zhDoc.id} has ${zhCount} source callouts`);
+    assert.equal((enDoc.text.match(LABELS) || []).length, zhCount, enDoc.id);
+  }
+});
+
+test("the source log is never loaded as a lesson", () => {
+  assert.ok(!loadDocs(COURSES).some((d) => d.id.toLowerCase() === "sources"));
 });

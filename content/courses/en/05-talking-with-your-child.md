@@ -21,11 +21,17 @@ Listening helps more than lecturing. When children feel heard, they are willing 
 - **Repeat back what you heard**: "It sounds like you felt really hurt that day." This helps your child feel understood.
 - **Thank your child for telling you**: "Thank you for sharing this with me."
 
+> **What research says:** Psychologist John Gottman calls this "emotion coaching" and describes five steps: become aware of the child's emotion; recognize the emotion as "an opportunity for intimacy and teaching"; listen empathetically and validate the child's feelings; help the child label the emotion in words; and set limits while helping the child problem-solve. (Gottman and DeClaire, *Raising an Emotionally Intelligent Child*, 1997)
+
+> **From the book:** Adele Faber and Elaine Mazlish suggest something similar: listen with full attention; acknowledge feelings with a word ("Oh...", "Mmm...", "I see."); and give the feelings a name. (Faber and Mazlish, *How to Talk So Kids Will Listen & Listen So Kids Will Talk*, 1980, chapter 1)
+
 ## When the topic makes you anxious
 
 Some topics make parents especially anxious, for example when a child says they like someone, or that they're in a relationship.
 
 What matters most then is to **steady your own emotions first**. If your first reaction is to scold or forbid, your child may well not tell you next time, and you lose the chance to understand and protect them.
+
+> **From the book:** "Strong feelings do not vanish by being banished", wrote child psychologist Haim G. Ginott; they ease when the listener accepts them with sympathy and understanding. (Ginott, *Between Parent and Child*, 1965)
 
 You could try saying:
 
@@ -39,7 +45,18 @@ Make it clear to your child: whatever happens, especially if they are in danger 
 
 > "Whatever happens, you can tell me. We'll figure it out together."
 
+> **What the law says:** China's Family Education Promotion Law (Article 17) asks parents to communicate with children as equals, with respect, understanding and encouragement.
+
 ## Reflection
 
 - When did your child last choose to share something personal with you? How did you respond?
 - If your child told you something that worried you a lot, what would you want your first words to be?
+
+## Sources
+
+*These show where the ideas in this lesson come from. This lesson is still awaiting professional review.*
+
+- John Gottman, Joan DeClaire. *Raising an Emotionally Intelligent Child: The Heart of Parenting*. New York: Simon & Schuster, 1997.
+- Adele Faber, Elaine Mazlish. *How to Talk So Kids Will Listen & Listen So Kids Will Talk*. New York: Rawson, Wade, 1980.
+- Haim G. Ginott. *Between Parent and Child: New Solutions to Old Problems*. New York: Macmillan, 1965.
+- Family Education Promotion Law of the People's Republic of China (2021), Article 17.

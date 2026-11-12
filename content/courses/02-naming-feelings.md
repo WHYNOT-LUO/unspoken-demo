@@ -12,6 +12,8 @@ questions: 怎么分辨自己是什么情绪？ | “我感到……因为……
 
 当我们能分辨出自己是什么情绪，说出更准确的词，情绪就从一团乱麻，变成了可以看清楚、可以处理的东西。别人也更容易理解我们。
 
+> **书里怎么说：** 精神科医生丹尼尔·西格尔和心理治疗师蒂娜·佩恩·布赖森把这个方法叫作“说出来，才能平静下来”（Name It to Tame It，本平台译）：帮孩子把发生的事讲出来、给感受起个名字，强烈的情绪会更容易平复。——西格尔、布赖森，*The Whole-Brain Child*（2011），第 2 章，全脑策略 2
+
 ## 一些常用的情绪词
 
 - **难过类**：失落、委屈、孤单、失望、伤心
@@ -40,6 +42,8 @@ questions: 怎么分辨自己是什么情绪？ | “我感到……因为……
 
 这个句式说的是**自己的感受和需要**，而不是指责对方，所以更容易被听进去。
 
+> **书里怎么说：** 这个句式参考了“非暴力沟通”的思路。马歇尔·卢森堡把表达分成四个部分：观察（发生了什么）、感受、需要和请求。“我感到……因为……我希望……”是它的简化版本。——卢森堡，《非暴力沟通》（*Nonviolent Communication*，第 3 版）
+
 ## 情绪很强烈的时候
 
 - 先暂停，深呼吸几次，慢慢数到十；
@@ -50,3 +54,10 @@ questions: 怎么分辨自己是什么情绪？ | “我感到……因为……
 
 - 回想今天的一件小事，试着用“我感到……因为……我希望……”写一句话。
 - 你的情绪通常最先出现在身体的哪个部位？
+
+## 参考资料
+
+*这些资料用来说明本课观点的出处。引号内的外文书句子为本平台翻译。本课仍在等待专业人士审核。*
+
+- Daniel J. Siegel, Tina Payne Bryson. *The Whole-Brain Child: 12 Revolutionary Strategies to Nurture Your Child's Developing Mind*. New York: Delacorte Press, 2011.
+- Marshall B. Rosenberg. *Nonviolent Communication: A Language of Life* (3rd ed.). Encinitas, CA: PuddleDancer Press, 2015. 中译本：《非暴力沟通》。

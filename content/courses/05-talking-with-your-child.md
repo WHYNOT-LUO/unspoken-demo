@@ -21,11 +21,17 @@ questions: 孩子什么都不愿意跟我说怎么办？ | 发现孩子在谈恋
 - **复述你听到的**：“听起来你那天特别委屈。”这会让孩子觉得被理解。
 - **感谢孩子告诉你**：“谢谢你愿意跟我说这些。”
 
+> **研究怎么说：** 心理学家约翰·戈特曼把这种做法称为“情绪辅导”（emotion coaching），并总结为五步：觉察孩子的情绪；把情绪看作“亲近和教导的机会”（本平台译）；带着同理心倾听，认可孩子的感受；帮孩子用语言说出情绪；在设定界限的同时，和孩子一起想办法。——戈特曼、德克莱尔，*Raising an Emotionally Intelligent Child*（1997）
+
+> **书里怎么说：** 阿黛尔·法伯和伊莱恩·马兹利什给出的方法很相似：全神贯注地听；用“哦……”“嗯……”“我明白”（本平台译）这样简单的话回应；说出孩子的感受。——法伯、马兹利什，*How to Talk So Kids Will Listen & Listen So Kids Will Talk*（1980），第 1 章
+
 ## 当话题让你紧张时
 
 有些话题会让家长特别紧张，比如孩子说自己喜欢上了某个人，或者在谈恋爱。
 
 这时最重要的是**先稳住自己的情绪**。如果第一反应是责骂或禁止，孩子下次很可能就不说了，而家长也就失去了了解和保护孩子的机会。
+
+> **书里怎么说：** 儿童心理学家海姆·吉诺特写道：“强烈的情绪不会因为被压下去而消失”（本平台译）；只有当倾听的人带着同情和理解去接纳，这些情绪才会慢慢减弱。——吉诺特，*Between Parent and Child*（1965）
 
 可以试着这样说：
 
@@ -39,7 +45,18 @@ questions: 孩子什么都不愿意跟我说怎么办？ | 发现孩子在谈恋
 
 > “不管发生什么，你都可以告诉我。我们一起想办法。”
 
+> **法律怎么说：** 《中华人民共和国家庭教育促进法》第十七条提倡父母和孩子“平等交流，予以尊重、理解和鼓励”。
+
 ## 反思练习
 
 - 最近一次孩子主动跟你分享心事，是什么时候？你当时是怎么回应的？
 - 如果孩子告诉你一件让你很担心的事，你希望自己的第一句话是什么？
+
+## 参考资料
+
+*这些资料用来说明本课观点的出处。引号内的外文书句子为本平台翻译。本课仍在等待专业人士审核。*
+
+- John Gottman, Joan DeClaire. *Raising an Emotionally Intelligent Child: The Heart of Parenting*. New York: Simon & Schuster, 1997.
+- Adele Faber, Elaine Mazlish. *How to Talk So Kids Will Listen & Listen So Kids Will Talk*. New York: Rawson, Wade, 1980.
+- Haim G. Ginott. *Between Parent and Child: New Solutions to Old Problems*. New York: Macmillan, 1965.
+- 《中华人民共和国家庭教育促进法》（2021 年），第十七条。

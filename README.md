@@ -73,6 +73,7 @@ All screenshots are from the running app; the AI answers are real responses from
 
 **Courses**
 - Seven short lessons in Chinese and English: what emotional education is, naming feelings, money and guilt, patterns passed down through generations, talking with your child, dating early, and protecting yourself in a relationship.
+- Each lesson shows where its ideas come from: short callouts citing published books (Rosenberg, Gottman, Faber & Mazlish, Ginott, Siegel), UNESCO's sexuality education guidance, the OpenStax psychology textbook and Chinese law, plus a sources list. Every quote was checked against the original text; the checks are recorded in `content/courses/SOURCES.md`.
 - After sign-up users choose "parent", "student" or "just looking"; lessons for their role are recommended first.
 - Progress tracking ("Completed 2 / 7"), a "next lesson" link, and suggested questions at the end of each lesson that ask the AI with one tap.
 - Select any passage to save it to the notebook or ask the AI about it.
@@ -240,7 +241,7 @@ Lessons are Markdown (`.md`) or plain-text (`.txt`) files. Refresh the page afte
 
 | Folder | Holds |
 |---|---|
-| `content/courses/` | Chinese lessons |
+| `content/courses/` | Chinese lessons, plus `SOURCES.md` (the source check log; not shown as a lesson) |
 | `content/courses/en/` | English lessons, **with the same file names** so progress carries across languages |
 | `content/library/` (and `library/en/`) | Platform reference material the AI can also answer from (currently the OpenStax and NIMH collections; see `content/library/README.md` for sources, licences and changes) |
 
@@ -394,14 +395,14 @@ npm test
 - **Machine-translated references.** The Chinese reference library is an AI translation that has not been reviewed line by line, and the originals are written for US readers.
 - **Single server process.** Login throttling and AI limits are counted in memory and reset when the app restarts.
 - **Needs a connection.** Offline, the installed app opens and shows a notice, but reading lessons and notes needs the network.
-- **Unreviewed content.** Lessons, safety text and crisis keywords are drafts.
+- **Unreviewed content.** Lessons, safety text and crisis keywords are drafts. The lessons cite published sources, but citing sources is not a professional review.
 - **Not built yet:** conversation rehearsal and pattern reflection across notes.
 
 ## Credits and licence
 
 Built by [WHYNOT-LUO](https://github.com/WHYNOT-LUO) with AI coding assistance.
 
-Released under the [MIT License](LICENSE). This covers the code and the draft lessons.
+Released under the [MIT License](LICENSE). This covers the code and the draft lessons. Short quotations from the books and the UNESCO guidance cited in the lessons remain the property of their authors and publishers and are used as attributed quotations.
 
 The reference library in `content/library/` is not covered by the MIT licence:
 
